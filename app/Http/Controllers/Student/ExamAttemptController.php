@@ -1,0 +1,245 @@
+<?php
+
+namespace App\Http\Controllers\Student;
+
+use App\Http\Controllers\Controller;
+use App\Jobs\ScoreEssayAnswerJob;
+use App\Models\AttemptAnswer;
+use App\Models\CheatLog;
+use App\Models\ExamAttempt;
+use App\Models\ExamQuestion;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+
+class ExamAttemptController extends Controller
+{
+    // ------------------------------------------------------------------
+    // Show exam page (GET /exam/{examId}/take)
+    // ------------------------------------------------------------------
+    public function show(int $examId): View|RedirectResponse
+    {
+        $student = Auth::guard('student')->user();
+
+        $attempt = ExamAttempt::with([
+            'exam.examQuestions.question.options',
+        ])
+        ->where('exam_id', $examId)
+        ->where('student_id', $student->id)
+        ->where('is_void', false)
+        ->firstOrFail();
+
+        if (in_array($attempt->status, ['selesai', 'dibatalkan', 'dikeluarkan'])) {
+            return redirect()->route('student.dashboard')
+                ->with('info', 'Ujian ini sudah selesai.');
+        }
+
+        $exam      = $attempt->exam;
+        $questions = $exam->examQuestions->sortBy('urutan');
+
+        $answers = AttemptAnswer::where('exam_attempt_id', $attempt->id)
+            ->get()
+            ->keyBy('question_id');
+
+        $sisaDetik = max(0, now()->diffInSeconds($attempt->batas_waktu_at, false));
+
+        return view('exam.take', compact('attempt', 'questions', 'answers', 'sisaDetik'));
+    }
+
+    // ------------------------------------------------------------------
+    // Save / update single answer  (POST /exam/attempt/{id}/answer/{questionId})
+    // ------------------------------------------------------------------
+    public function saveAnswer(Request $request, int $attemptId, int $questionId): JsonResponse
+    {
+        $student = Auth::guard('student')->user();
+
+        $data = $request->validate([
+            'jawaban_pg'   => ['nullable', 'string', 'max:5'],
+            'jawaban_esai' => ['nullable', 'string', 'max:20000'],
+        ]);
+
+        DB::transaction(function () use ($attemptId, $questionId, $data, $student) {
+            $attempt = ExamAttempt::where('id', $attemptId)
+                ->where('student_id', $student->id)
+                ->where('status', 'berlangsung')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            abort_if(now()->gt($attempt->batas_waktu_at), 422, 'Waktu ujian sudah habis.');
+
+            ExamQuestion::where('exam_id', $attempt->exam_id)
+                ->where('question_id', $questionId)
+                ->firstOrFail();
+
+            AttemptAnswer::updateOrCreate(
+                ['exam_attempt_id' => $attemptId, 'question_id' => $questionId],
+                array_filter([
+                    'jawaban_pg'   => $data['jawaban_pg']   ?? null,
+                    'jawaban_esai' => $data['jawaban_esai'] ?? null,
+                ], fn ($v) => $v !== null),
+            );
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
+    // ------------------------------------------------------------------
+    // Heartbeat — sync sisa waktu + status (POST /exam/attempt/{id}/heartbeat)
+    // ------------------------------------------------------------------
+    public function heartbeat(int $attemptId): JsonResponse
+    {
+        $student = Auth::guard('student')->user();
+
+        $attempt = ExamAttempt::where('id', $attemptId)
+            ->where('student_id', $student->id)
+            ->firstOrFail();
+
+        if ($attempt->status !== 'berlangsung') {
+            return response()->json([
+                'status' => $attempt->status,
+                'reason' => $attempt->void_reason,
+            ]);
+        }
+
+        $sisaDetik = max(0, now()->diffInSeconds($attempt->batas_waktu_at, false));
+
+        if ($sisaDetik <= 0) {
+            $this->_doSubmit($attempt, 'auto');
+            return response()->json(['status' => 'selesai', 'sisa_detik' => 0]);
+        }
+
+        return response()->json([
+            'status'          => 'berlangsung',
+            'sisa_detik'      => $sisaDetik,
+            'violation_count' => $attempt->jumlah_pelanggaran,
+        ]);
+    }
+
+    // ------------------------------------------------------------------
+    // Log cheat event  (POST /exam/attempt/{id}/cheat)
+    // ------------------------------------------------------------------
+    public function logCheat(Request $request, int $attemptId): JsonResponse
+    {
+        $student = Auth::guard('student')->user();
+
+        $data = $request->validate([
+            'jenis'      => ['required', 'string', 'max:50'],
+            'detail'     => ['nullable', 'array'],
+            'terjadi_at' => ['nullable', 'date'],
+        ]);
+
+        DB::transaction(function () use ($attemptId, $data, $student) {
+            $attempt = ExamAttempt::where('id', $attemptId)
+                ->where('student_id', $student->id)
+                ->where('status', 'berlangsung')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            CheatLog::create([
+                'exam_attempt_id' => $attempt->id,
+                'jenis'           => $data['jenis'],
+                'detail'          => $data['detail'] ?? null,
+                'terjadi_at'      => $data['terjadi_at'] ?? now(),
+            ]);
+
+            $attempt->increment('jumlah_pelanggaran');
+
+            // Reload to get fresh count
+            $attempt->refresh();
+
+            $exam = $attempt->exam;
+            if (
+                $exam->auto_keluar &&
+                $exam->max_pelanggaran > 0 &&
+                $attempt->jumlah_pelanggaran >= $exam->max_pelanggaran
+            ) {
+                $this->_doSubmit($attempt, 'dikeluarkan', 'Batas pelanggaran tercapai.');
+            }
+        });
+
+        return response()->json(['ok' => true, 'count' => $attemptId]);
+    }
+
+    // ------------------------------------------------------------------
+    // Final submit  (POST /exam/attempt/{id}/submit)
+    // ------------------------------------------------------------------
+    public function submit(Request $request, int $attemptId): JsonResponse
+    {
+        $student = Auth::guard('student')->user();
+
+        $data = $request->validate([
+            'mode'   => ['nullable', 'in:manual,auto'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $result = DB::transaction(function () use ($attemptId, $data, $student) {
+            $attempt = ExamAttempt::where('id', $attemptId)
+                ->where('student_id', $student->id)
+                ->whereIn('status', ['berlangsung'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            return $this->_doSubmit($attempt, $data['mode'] ?? 'manual', $data['reason'] ?? null);
+        });
+
+        return response()->json($result);
+    }
+
+    // ------------------------------------------------------------------
+    // Internal submit helper — call inside transaction with lockForUpdate
+    // ------------------------------------------------------------------
+    private function _doSubmit(ExamAttempt $attempt, string $mode, ?string $reason = null): array
+    {
+        if (! in_array($attempt->status, ['berlangsung'])) {
+            return ['status' => $attempt->status];
+        }
+
+        $newStatus = $mode === 'dikeluarkan' ? 'dikeluarkan' : 'selesai';
+
+        // Auto-score PG answers
+        $pgSkor = $this->_scorePG($attempt);
+
+        $attempt->update([
+            'status'      => $newStatus,
+            'selesai_at'  => now(),
+            'total_skor'  => $pgSkor,
+            'void_reason' => $reason,
+        ]);
+
+        // Dispatch async AI scoring for all essay answers
+        AttemptAnswer::where('exam_attempt_id', $attempt->id)
+            ->whereHas('question', fn ($q) => $q->where('tipe', 'esai'))
+            ->whereNull('dinilai_oleh')
+            ->each(fn ($a) => ScoreEssayAnswerJob::dispatch($a->id));
+
+        return ['status' => $newStatus, 'reason' => $reason];
+    }
+
+    private function _scorePG(ExamAttempt $attempt): float
+    {
+        $answers = AttemptAnswer::where('exam_attempt_id', $attempt->id)
+            ->whereNotNull('jawaban_pg')
+            ->with('question.options')
+            ->get();
+
+        $total = 0.0;
+
+        foreach ($answers as $answer) {
+            $correct = $answer->question->options
+                ->firstWhere('is_correct', true)?->label;
+
+            if ($correct && $answer->jawaban_pg === $correct) {
+                $skor = (float) $answer->question->bobot;
+                $answer->update(['skor' => $skor, 'dinilai_oleh' => 'ai']);
+                $total += $skor;
+            } else {
+                $answer->update(['skor' => 0, 'dinilai_oleh' => 'ai']);
+            }
+        }
+
+        return $total;
+    }
+}

@@ -1,0 +1,39 @@
+{
+    "name": "PiCBT Admin Panel",
+    "short_name": "PiCBT",
+    "description": "Panel administrasi sistem Computer Based Test PiCBT",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#0f0d25",
+    "theme_color": "#7c6af6",
+    "lang": "id",
+    "categories": ["education", "productivity"],
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Dashboard",
+            "url": "/admin/dashboard",
+            "description": "Buka dashboard admin"
+        },
+        {
+            "name": "Ujian",
+            "url": "/admin/exams",
+            "description": "Kelola ujian"
+        }
+    ]
+}
