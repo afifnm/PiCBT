@@ -7,8 +7,10 @@ use App\Models\Question;
 use App\Models\QuestionBank;
 use App\Models\QuestionOption;
 use App\Models\Subject;
+use App\Services\QuestionTxtParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -64,9 +66,27 @@ class QuestionBankController extends Controller
         return response()->json($bank->fresh()->load('subject'));
     }
 
-    public function destroy(QuestionBank $bank): JsonResponse
+    public function destroy(Request $request, QuestionBank $bank): JsonResponse
     {
-        DB::transaction(fn () => $bank->delete());
+        $force = $request->boolean('force');
+
+        if (! $force && $bank->exams()->exists()) {
+            return response()->json([
+                'message' => 'Bank soal tidak dapat dihapus karena sudah digunakan pada jadwal ujian. Gunakan opsi "Paksa Hapus" jika Anda ingin menghapus beserta jadwal dan jawaban siswanya.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($bank, $force) {
+            if ($force) {
+                $examIds = $bank->exams()->pluck('id');
+                if ($examIds->isNotEmpty()) {
+                    DB::table('exam_attempts')->whereIn('exam_id', $examIds)->delete();
+                    DB::table('exams')->whereIn('id', $examIds)->delete();
+                }
+            }
+            $bank->delete();
+        });
+
         return response()->json(['ok' => true]);
     }
 
@@ -116,6 +136,118 @@ class QuestionBankController extends Controller
         });
 
         return response()->json($question->load('options'), 201);
+    }
+
+    // -----------------------------------------------------------------------
+    // Import soal dari TXT
+    // -----------------------------------------------------------------------
+    public function importQuestions(Request $request, QuestionBank $bank, QuestionTxtParser $parser): JsonResponse
+    {
+        $request->validate([
+            'file' => ['nullable', 'file', 'mimetypes:text/plain', 'max:2048'],
+            'teks' => ['nullable', 'string'],
+        ]);
+
+        $raw = $request->hasFile('file')
+            ? (string) $request->file('file')->get()
+            : (string) $request->input('teks', '');
+
+        if (trim($raw) === '') {
+            return response()->json([
+                'message' => 'Silakan unggah file .txt atau tempel teks soal terlebih dahulu.',
+            ], 422);
+        }
+
+        ['questions' => $parsed, 'errors' => $errors] = $parser->parse($raw);
+
+        $imported = DB::transaction(function () use ($parsed, $bank) {
+            $urutan = (int) $bank->questions()->max('urutan');
+            $count  = 0;
+
+            foreach ($parsed as $data) {
+                $q = $bank->questions()->create([
+                    'tipe'          => $data['tipe'],
+                    'pertanyaan'    => $data['pertanyaan'],
+                    'bobot'         => $data['bobot'],
+                    'urutan'        => ++$urutan,
+                    'kunci_jawaban' => $data['kunci_jawaban'] ?? null,
+                ]);
+
+                if ($data['tipe'] === 'pilihan_ganda') {
+                    foreach ($data['options'] as $opt) {
+                        $q->options()->create([
+                            'label'      => $opt['label'],
+                            'teks_opsi'  => $opt['teks_opsi'],
+                            'is_correct' => (bool) ($opt['is_correct'] ?? false),
+                        ]);
+                    }
+                }
+
+                $count++;
+            }
+
+            return $count;
+        });
+
+        return response()->json([
+            'imported' => $imported,
+            'skipped'  => count($errors),
+            'errors'   => $errors,
+        ]);
+    }
+
+    public function importTemplate(): Response
+    {
+        $content = <<<TXT
+        # Template Import Soal PiCBT
+        # ---------------------------------------------------------------
+        # Aturan:
+        #  - Pisahkan tiap soal dengan satu baris kosong (atau garis ---).
+        #  - TIPE: pg (pilihan ganda) atau esai. Default: pg.
+        #  - BOBOT: angka, default 10.
+        #  - SOAL: pertanyaan (boleh lebih dari satu baris).
+        #  - Opsi PG ditulis "A. teks", tandai kunci dengan * di akhir.
+        #  - RUBRIK: (untuk esai) jawaban acuan / rubrik penilaian AI.
+        #  - Baris diawali '#' diabaikan (komentar).
+        # ---------------------------------------------------------------
+
+        TIPE: pg
+        BOBOT: 10
+        SOAL: Apa ibu kota Indonesia?
+        A. Bandung
+        B. Jakarta*
+        C. Surabaya
+        D. Medan
+
+        TIPE: pg
+        BOBOT: 10
+        SOAL: 2 + 3 = ?
+        A. 4
+        B. 5*
+        C. 6
+        D. 7
+
+        TIPE: esai
+        BOBOT: 20
+        SOAL: Jelaskan proses fotosintesis secara singkat.
+        RUBRIK: Sebut reaktan (air, CO2, cahaya matahari) dan produk (glukosa, O2). Skor penuh bila ketiganya disebut dengan benar.
+        TXT;
+
+        return response($content, 200, [
+            'Content-Type'        => 'text/plain; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="template-soal.txt"',
+        ]);
+    }
+
+    public function importGuide(): View
+    {
+        return view('admin.question-banks.import-guide');
+    }
+
+    public function destroyAllQuestions(QuestionBank $bank): JsonResponse
+    {
+        DB::transaction(fn () => $bank->questions()->delete());
+        return response()->json(['ok' => true]);
     }
 
     public function showQuestion(Question $question): JsonResponse

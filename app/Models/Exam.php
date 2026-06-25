@@ -12,7 +12,8 @@ class Exam extends Model
     protected $fillable = [
         'question_bank_id', 'judul', 'token', 'target_kelas',
         'target_tahun_masuk', 'durasi_menit', 'acak_soal', 'acak_opsi',
-        'mulai_pada', 'selesai_pada', 'max_pelanggaran', 'auto_keluar', 'status',
+        'mulai_pada', 'selesai_pada', 'max_pelanggaran', 'auto_keluar',
+        'tampilkan_peringatan', 'status',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class Exam extends Model
             'acak_soal'          => 'boolean',
             'acak_opsi'          => 'boolean',
             'auto_keluar'        => 'boolean',
+            'tampilkan_peringatan' => 'boolean',
             'mulai_pada'         => 'datetime',
             'selesai_pada'       => 'datetime',
             'durasi_menit'       => 'integer',

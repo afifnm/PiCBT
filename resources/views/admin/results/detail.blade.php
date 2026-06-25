@@ -85,8 +85,52 @@
         </div>
     </div>
 
+    {{-- Aksi massal esai --}}
+    @php $hasEssay = $attempt->exam->examQuestions->contains(fn ($eq) => $eq->question->tipe === 'esai'); @endphp
+    @if ($hasEssay)
+    <div class="card p-4 mb-5 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">Koreksi Esai Massal</p>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5" x-text="bulkStatus"></p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button @click="aiKoreksiSemua()" :disabled="bulkAiLoading || bulkSaving"
+                    class="btn-ghost disabled:opacity-50 flex items-center gap-1.5">
+                <template x-if="!bulkAiLoading">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                    </svg>
+                </template>
+                <template x-if="bulkAiLoading">
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                </template>
+                <span x-text="bulkAiLoading ? 'Menilai AI...' : 'Koreksi AI Semua'"></span>
+            </button>
+            <button @click="simpanSemua()" :disabled="bulkSaving || bulkAiLoading"
+                    class="btn-primary disabled:opacity-50 flex items-center gap-1.5">
+                <template x-if="!bulkSaving">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </template>
+                <template x-if="bulkSaving">
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                </template>
+                <span x-text="bulkSaving ? 'Menyimpan...' : 'Simpan Semua'"></span>
+            </button>
+        </div>
+    </div>
+    @endif
+
     {{-- Daftar jawaban --}}
-    <div class="space-y-4">
+    <div class="space-y-4" x-ref="answerList">
         @foreach ($attempt->exam->examQuestions as $eq)
             @php
                 $q   = $eq->question;
@@ -131,8 +175,8 @@
                                         : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400' }}">
                                     {{ $opt->label }}
                                 </span>
-                                <span class="{{ $opt->is_correct ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-300' }}">
-                                    {{ $opt->teks_opsi }}
+                                <span class="{{ $opt->is_correct ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-300' }} prose prose-sm max-w-none dark:prose-invert">
+                                    {!! $opt->teks_opsi !!}
                                 </span>
                                 @if ($ans?->jawaban_pg === $opt->label)
                                     <span class="ml-auto text-xs {{ $opt->is_correct ? 'text-emerald-500' : 'text-rose-500' }}">
@@ -187,6 +231,23 @@
                                 <input type="text" x-model="feedbackInput" placeholder="Opsional..."
                                        class="input-base">
                             </div>
+                            <button @click="aiKoreksi()" :disabled="aiLoading || answerId === null"
+                                    class="btn-ghost disabled:opacity-50 flex items-center gap-1.5"
+                                    title="Koreksi menggunakan Gemini AI">
+                                <template x-if="!aiLoading">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                                    </svg>
+                                </template>
+                                <template x-if="aiLoading">
+                                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    </svg>
+                                </template>
+                                <span x-text="aiLoading ? 'Menilai...' : 'Koreksi AI'"></span>
+                            </button>
                             <button @click="saveSkor()" :disabled="saving || answerId === null"
                                     class="btn-primary disabled:opacity-50">
                                 <span x-show="!saving">Simpan</span>
@@ -199,12 +260,15 @@
                                 </span>
                             </button>
                         </div>
-                        <p x-show="saved" class="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
-                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            Skor disimpan
-                        </p>
+                        <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                            <p x-show="saved" class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Skor disimpan
+                            </p>
+                            <p x-show="aiError" x-text="aiError" class="text-xs text-rose-500 dark:text-rose-400"></p>
+                        </div>
                     </div>
                 @endif
             </div>
@@ -225,6 +289,8 @@ function essayScore(answerId, initialSkor, initialFeedback, initialDinilai) {
         dinilaiOleh: initialDinilai,
         saving: false,
         saved: false,
+        aiLoading: false,
+        aiError: '',
 
         async saveSkor() {
             if (this.answerId === null) return;
@@ -242,9 +308,90 @@ function essayScore(answerId, initialSkor, initialFeedback, initialDinilai) {
             }
             this.saving = false;
         },
+
+        async aiKoreksi() {
+            if (this.answerId === null) return;
+            // Jangan koreksi ulang esai yang sudah dinilai (AI maupun manual)
+            if (this.dinilaiOleh) {
+                this.aiError = 'Sudah dikoreksi — dilewati.';
+                return;
+            }
+            this.aiLoading = true; this.aiError = ''; this.saved = false;
+            try {
+                const res = await fetch(`{{ url('admin/results/answer') }}/${this.answerId}/ai-score`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                });
+                const data = await res.json();
+                if (res.ok && data.ok) {
+                    this.skorInput    = data.skor ?? this.skorInput;
+                    this.aiFeedback   = data.ai_feedback ?? '';
+                    this.dinilaiOleh  = data.dinilai_oleh ?? 'ai';
+                } else {
+                    this.aiError = data.message ?? 'Koreksi AI gagal. Coba lagi.';
+                }
+            } catch {
+                this.aiError = 'Gagal menghubungi server.';
+            }
+            this.aiLoading = false;
+        },
     };
 }
-function detailPage() { return {}; }
+function detailPage() {
+    return {
+        bulkAiLoading: false,
+        bulkSaving: false,
+        bulkStatus: 'Terapkan koreksi AI ke semua soal esai sekaligus.',
+
+        essayComponents() {
+            return Array.from(this.$refs.answerList.querySelectorAll('[x-data]'))
+                .map(el => el._x_dataStack?.[0])
+                .filter(c => c && typeof c.aiKoreksi === 'function');
+        },
+
+        async aiKoreksiSemua() {
+            const comps = this.essayComponents();
+            if (!comps.length) return;
+
+            // Hanya koreksi esai yang belum dinilai (AI maupun manual)
+            const pending = comps.filter(c => !c.dinilaiOleh && c.answerId !== null);
+            const skipped = comps.length - pending.length;
+
+            if (!pending.length) {
+                this.bulkStatus = `Semua soal esai (${comps.length}) sudah dikoreksi — tidak ada yang perlu dinilai.`;
+                return;
+            }
+
+            this.bulkAiLoading = true;
+            this.bulkStatus = `Menilai 0 / ${pending.length} soal esai...`;
+            let done = 0;
+            for (const c of pending) {
+                await c.aiKoreksi();
+                done++;
+                this.bulkStatus = `Menilai ${done} / ${pending.length} soal esai...`;
+            }
+            this.bulkAiLoading = false;
+            this.bulkStatus = skipped > 0
+                ? `Koreksi AI selesai untuk ${pending.length} soal esai (${skipped} sudah dikoreksi, dilewati). Klik "Simpan Semua" untuk menyimpan.`
+                : `Koreksi AI selesai untuk ${pending.length} soal esai. Klik "Simpan Semua" untuk menyimpan.`;
+        },
+
+        async simpanSemua() {
+            const comps = this.essayComponents();
+            if (!comps.length) return;
+            this.bulkSaving = true;
+            this.bulkStatus = `Menyimpan 0 / ${comps.length} soal esai...`;
+            let done = 0;
+            for (const c of comps) {
+                await c.saveSkor();
+                done++;
+                this.bulkStatus = `Menyimpan ${done} / ${comps.length} soal esai...`;
+            }
+            this.bulkSaving = false;
+            this.bulkStatus = `Semua ${comps.length} soal esai berhasil disimpan.`;
+        },
+    };
+}
 function csrf() { return document.querySelector('meta[name="csrf-token"]').content; }
 </script>
 @endpush

@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\QuestionBankController;
 use App\Http\Controllers\Admin\ResultController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\SubjectController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +24,26 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // ----------------------------------------------------------------
+    // Master User (Admin & Guru)
+    // ----------------------------------------------------------------
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/',                          [UserController::class, 'index'])->name('index');
+        Route::get('/json',                      [UserController::class, 'json'])->name('json');
+        Route::post('/',                         [UserController::class, 'store'])->name('store');
+        Route::put('/{user}',                    [UserController::class, 'update'])->name('update');
+        Route::patch('/{user}/reset-password',   [UserController::class, 'resetPassword'])->name('reset-password');
+        Route::delete('/{user}',                 [UserController::class, 'destroy'])->name('destroy');
+    });
+
+    // ----------------------------------------------------------------
+    // Profil user yang login
+    // ----------------------------------------------------------------
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/',    [ProfileController::class, 'edit'])->name('edit');
+        Route::put('/',    [ProfileController::class, 'update'])->name('update');
+    });
 
     // ----------------------------------------------------------------
     // Master Siswa
@@ -56,8 +78,12 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
         Route::post('/',                              [QuestionBankController::class, 'store'])->name('store');
         Route::put('/{bank}',                         [QuestionBankController::class, 'update'])->name('update');
         Route::delete('/{bank}',                      [QuestionBankController::class, 'destroy'])->name('destroy');
+        Route::get('/questions/import/template',      [QuestionBankController::class, 'importTemplate'])->name('questions.template');
+        Route::get('/questions/import/panduan',       [QuestionBankController::class, 'importGuide'])->name('questions.guide');
         Route::get('/{bank}/questions',               [QuestionBankController::class, 'questions'])->name('questions');
         Route::post('/{bank}/questions',              [QuestionBankController::class, 'storeQuestion'])->name('questions.store');
+        Route::post('/{bank}/questions/import',       [QuestionBankController::class, 'importQuestions'])->name('questions.import');
+        Route::delete('/{bank}/questions',            [QuestionBankController::class, 'destroyAllQuestions'])->name('questions.destroyAll');
     });
 
     // ----------------------------------------------------------------
@@ -88,8 +114,12 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
     Route::prefix('results')->name('results.')->group(function () {
         Route::get('/',                               [ResultController::class, 'index'])->name('index');
         Route::get('/json',                           [ResultController::class, 'json'])->name('json');
+        Route::get('/exam/{exam}',                    [ResultController::class, 'exam'])->name('exam');
         Route::get('/attempt/{attempt}',              [ResultController::class, 'detail'])->name('detail');
+        Route::delete('/attempt/{attempt}/reset',     [ResultController::class, 'resetAttempt'])->name('attempt.reset');
+        Route::delete('/exam/{exam}/reset-all',       [ResultController::class, 'resetAllAttempts'])->name('exam.reset-all');
         Route::patch('/answer/{answer}/score',        [ResultController::class, 'overrideScore'])->name('override');
+        Route::post('/answer/{answer}/ai-score',      [ResultController::class, 'aiScore'])->name('ai-score');
         Route::get('/export/excel',                   [ResultController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf',                     [ResultController::class, 'exportPdf'])->name('export.pdf');
     });

@@ -19,16 +19,16 @@ class SettingController extends Controller
     {
         $settings = [
             'gemini_api_key'   => $this->getMasked('gemini_api_key'),
-            'gemini_model'     => Setting::get('gemini_model', 'gemini-1.5-flash'),
+            'gemini_model'     => Setting::get('gemini_model', 'gemini-2.5-flash'),
             'app_name'         => Setting::get('app_name', 'PiCBT'),
             'sekolah_nama'     => Setting::get('sekolah_nama', ''),
             'sekolah_alamat'   => Setting::get('sekolah_alamat', ''),
         ];
 
         $models = [
-            'gemini-1.5-flash'  => 'Gemini 1.5 Flash (cepat, hemat)',
-            'gemini-1.5-pro'    => 'Gemini 1.5 Pro (akurat, lebih lambat)',
-            'gemini-2.0-flash'  => 'Gemini 2.0 Flash (terbaru)',
+            'gemini-2.5-flash'      => 'Gemini 2.5 Flash (terbaru, cepat)',
+            'gemini-2.5-flash-lite' => 'Gemini 2.5 Flash Lite (hemat, ringkas)',
+            'gemini-2.5-flash'      => 'Gemini 1.5 Flash (lama)',
         ];
 
         return view('admin.settings.index', compact('settings', 'models'));
@@ -69,7 +69,7 @@ class SettingController extends Controller
                 return response()->json(['ok' => false, 'message' => 'API key belum dikonfigurasi.']);
             }
 
-            $model = Setting::get('gemini_model', 'gemini-1.5-flash');
+            $model = Setting::get('gemini_model', 'gemini-2.5-flash');
             $url   = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
             $res = Http::timeout(10)->post($url, [

@@ -117,36 +117,86 @@
         </table>
     </div>
 
-    {{-- Feed pelanggaran --}}
-    <div class="card mt-5">
-        <div class="card-header">
-            <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <h3 class="font-semibold text-surface-800 dark:text-surface-100 text-sm">Pelanggaran Terbaru</h3>
-            </div>
-        </div>
-        <div class="divide-y divide-surface-50 dark:divide-surface-800 max-h-64 overflow-y-auto scrollbar-thin">
-            <template x-for="log in recentCheats" :key="log.id">
-                <div class="px-5 py-3 flex items-start gap-3">
-                    <div class="w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center flex-none mt-0.5">
-                        <svg class="w-3 h-3 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-medium text-surface-800 dark:text-surface-100 text-sm" x-text="log.student_nama"></span>
-                        <span class="text-surface-400 mx-1">—</span>
-                        <span class="text-surface-600 dark:text-surface-300 text-sm" x-text="log.jenis_label"></span>
-                    </div>
-                    <span class="text-xs text-surface-400 dark:text-surface-500 flex-none" x-text="log.terjadi_at"></span>
+    {{-- Grid bawah: Feed pelanggaran + Progress soal --}}
+    <div class="grid lg:grid-cols-2 gap-5 mt-5">
+
+        {{-- Feed pelanggaran --}}
+        <div class="card">
+            <div class="card-header">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <h3 class="font-semibold text-surface-800 dark:text-surface-100 text-sm">Pelanggaran Terbaru</h3>
                 </div>
-            </template>
-            <div x-show="recentCheats.length === 0" class="px-5 py-8 text-center">
-                <p class="text-sm text-surface-400">Tidak ada pelanggaran.</p>
+                <button @click="toggleSound()"
+                        :title="soundOn ? 'Matikan notifikasi suara' : 'Aktifkan notifikasi suara'"
+                        class="text-xs px-2 py-1 rounded-lg border transition-colors"
+                        :class="soundOn
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-700 dark:text-emerald-400'
+                            : 'border-surface-200 dark:border-surface-700 text-surface-400'">
+                    <span x-text="soundOn ? '🔔 Suara Aktif' : '🔕 Suara Mati'"></span>
+                </button>
+            </div>
+            <div class="divide-y divide-surface-50 dark:divide-surface-800 max-h-72 overflow-y-auto scrollbar-thin">
+                <template x-for="log in recentCheats" :key="log.id">
+                    <div class="px-5 py-3 flex items-start gap-3"
+                         :class="log._new ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''">
+                        <div class="w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center flex-none mt-0.5">
+                            <svg class="w-3 h-3 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-medium text-surface-800 dark:text-surface-100 text-sm" x-text="log.student_nama"></span>
+                            <span class="text-surface-400 mx-1">—</span>
+                            <span class="text-surface-600 dark:text-surface-300 text-sm" x-text="log.jenis_label"></span>
+                        </div>
+                        <span class="text-xs text-surface-400 dark:text-surface-500 flex-none" x-text="log.terjadi_at"></span>
+                    </div>
+                </template>
+                <div x-show="recentCheats.length === 0" class="px-5 py-8 text-center">
+                    <p class="text-sm text-surface-400">Tidak ada pelanggaran.</p>
+                </div>
             </div>
         </div>
+
+        {{-- Progress per soal --}}
+        <div class="card">
+            <div class="card-header">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <h3 class="font-semibold text-surface-800 dark:text-surface-100 text-sm">Progress per Soal</h3>
+                </div>
+                <span class="text-xs text-surface-400 dark:text-surface-500">
+                    Peserta aktif: <span class="font-semibold text-surface-600 dark:text-surface-300" x-text="counts.berlangsung"></span>
+                </span>
+            </div>
+            <div class="px-5 py-4 max-h-72 overflow-y-auto scrollbar-thin">
+                <template x-if="soalProgress.length === 0">
+                    <p class="text-sm text-surface-400 text-center py-4">Belum ada data.</p>
+                </template>
+                <div class="space-y-2">
+                    <template x-for="soal in soalProgress" :key="soal.urutan">
+                        <div class="flex items-center gap-3">
+                            <span class="flex-none text-xs font-mono text-surface-400 dark:text-surface-500 w-8 text-right"
+                                  x-text="'#' + soal.urutan"></span>
+                            <div class="flex-1 bg-surface-100 dark:bg-surface-800 rounded-full h-2.5 overflow-hidden">
+                                <div class="h-2.5 rounded-full transition-all duration-500"
+                                     :class="progressColor(soal.jawab_count)"
+                                     :style="`width: ${totalBerlangsung > 0 ? Math.min(100, (soal.jawab_count / totalBerlangsung) * 100) : 0}%`">
+                                </div>
+                            </div>
+                            <span class="flex-none text-xs text-surface-500 dark:text-surface-400 w-10 text-right"
+                                  x-text="soal.jawab_count + '/' + totalBerlangsung"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 </div>
@@ -159,10 +209,19 @@ function monitorPage(examId) {
         attempts: [],
         filtered: [],
         recentCheats: [],
+        soalProgress: [],
+        totalQuestions: 0,
         filterStatus: '',
         lastRefresh: '—',
         counts: { berlangsung: 0, selesai: 0, dikeluarkan: 0, total_pelanggaran: 0 },
+        soundOn: true,
         _interval: null,
+        _lastCheatId: null,
+        _audioCtx: null,
+
+        get totalBerlangsung() {
+            return this.counts.berlangsung || 1;
+        },
 
         init() {
             this.fetch();
@@ -175,11 +234,32 @@ function monitorPage(examId) {
             });
             if (!res.ok) return;
             const data = await res.json();
+
+            // Deteksi pelanggaran baru
+            const prevIds = new Set(this.recentCheats.map(c => c.id));
+            this.recentCheats = (data.recentCheats || []).map(c => ({
+                ...c,
+                _new: !prevIds.has(c.id),
+            }));
+            const hasNew = this.recentCheats.some(c => c._new);
+            if (hasNew && this._lastCheatId !== null) {
+                this._playAlert();
+            }
+            if (this.recentCheats.length > 0) {
+                this._lastCheatId = this.recentCheats[0].id;
+            }
+
             this.attempts     = data.attempts;
-            this.recentCheats = data.recent_cheats;
             this.counts       = data.counts;
+            this.soalProgress = data.soalProgress || [];
+            this.totalQuestions = data.totalQuestions || 0;
             this.lastRefresh  = new Date().toLocaleTimeString('id-ID');
             this.applyFilter();
+
+            // Reset _new flag setelah 5 detik
+            setTimeout(() => {
+                this.recentCheats = this.recentCheats.map(c => ({ ...c, _new: false }));
+            }, 5000);
         },
 
         applyFilter() {
@@ -193,6 +273,39 @@ function monitorPage(examId) {
             const m = Math.floor(seconds / 60);
             const s = seconds % 60;
             return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        },
+
+        progressColor(count) {
+            const pct = this.counts.berlangsung > 0 ? count / this.counts.berlangsung : 0;
+            if (pct >= 0.8) return 'bg-emerald-400';
+            if (pct >= 0.5) return 'bg-amber-400';
+            return 'bg-indigo-400';
+        },
+
+        toggleSound() {
+            this.soundOn = !this.soundOn;
+        },
+
+        _playAlert() {
+            if (!this.soundOn) return;
+            try {
+                if (!this._audioCtx) {
+                    this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const ctx = this._audioCtx;
+                [0, 0.12, 0.24].forEach((delay) => {
+                    const osc  = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = 880;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.25, ctx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.1);
+                    osc.start(ctx.currentTime + delay);
+                    osc.stop(ctx.currentTime + delay + 0.1);
+                });
+            } catch (e) {}
         },
     };
 }

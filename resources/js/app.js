@@ -3,6 +3,133 @@ import collapse from '@alpinejs/collapse';
 
 Alpine.plugin(collapse);
 window.Alpine = Alpine;
+
+/* ──────────────────────────────────────────
+   Dark mode toggle helper (used by layout)
+────────────────────────────────────────── */
+window.darkMode = function () {
+    return {
+        dark: localStorage.getItem('theme') === 'dark' ||
+              (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches),
+        init() {
+            this.applyTheme();
+            this.$watch('dark', () => {
+                localStorage.setItem('theme', this.dark ? 'dark' : 'light');
+                this.applyTheme();
+            });
+        },
+        toggle() { this.dark = !this.dark; },
+        applyTheme() {
+            document.documentElement.classList.toggle('dark', this.dark);
+        },
+    };
+};
+
+/* ──────────────────────────────────────────
+   Searchable <select> (Select2-style, Alpine)
+   Usage: see resources/views/components/searchable-select.blade.php
+────────────────────────────────────────── */
+window.searchableSelect = function (config = {}) {
+    return {
+        // Public (x-modelable target)
+        selected: config.value ?? '',
+
+        // Config
+        options: config.options ?? [],        // [{ value, label }]
+        placeholder: config.placeholder ?? 'Pilih...',
+        searchPlaceholder: config.searchPlaceholder ?? 'Cari...',
+        emptyText: config.emptyText ?? 'Tidak ada hasil',
+        allowClear: config.allowClear ?? true,
+
+        // State
+        open: false,
+        search: '',
+        highlighted: 0,
+
+        init() {
+            // Keep highlight valid whenever the filtered list changes
+            this.$watch('search', () => { this.highlighted = 0; });
+        },
+
+        get filtered() {
+            const q = this.search.trim().toLowerCase();
+            if (!q) return this.options;
+            return this.options.filter(o =>
+                String(o.label).toLowerCase().includes(q)
+            );
+        },
+
+        get selectedLabel() {
+            const match = this.options.find(o => String(o.value) === String(this.selected));
+            return match ? match.label : '';
+        },
+
+        get hasValue() {
+            return this.selected !== '' && this.selected !== null && this.selected !== undefined;
+        },
+
+        toggle() {
+            this.open ? this.close() : this.openDropdown();
+        },
+
+        openDropdown() {
+            this.open = true;
+            this.search = '';
+            // Highlight the currently selected option, if any
+            const idx = this.filtered.findIndex(o => String(o.value) === String(this.selected));
+            this.highlighted = idx >= 0 ? idx : 0;
+            this.$nextTick(() => {
+                const input = this.$refs.searchInput;
+                if (input) input.focus();
+                this.scrollToHighlighted();
+            });
+        },
+
+        close() {
+            this.open = false;
+            this.search = '';
+        },
+
+        choose(option) {
+            this.selected = option.value;
+            this.close();
+        },
+
+        clear() {
+            this.selected = '';
+            this.close();
+        },
+
+        // Keyboard navigation
+        onArrowDown() {
+            if (!this.open) { this.openDropdown(); return; }
+            if (this.highlighted < this.filtered.length - 1) this.highlighted++;
+            this.scrollToHighlighted();
+        },
+        onArrowUp() {
+            if (this.highlighted > 0) this.highlighted--;
+            this.scrollToHighlighted();
+        },
+        onEnter() {
+            if (!this.open) { this.openDropdown(); return; }
+            const opt = this.filtered[this.highlighted];
+            if (opt) this.choose(opt);
+        },
+
+        scrollToHighlighted() {
+            this.$nextTick(() => {
+                const list = this.$refs.optionList;
+                if (!list) return;
+                const el = list.children[this.highlighted];
+                if (el) el.scrollIntoView({ block: 'nearest' });
+            });
+        },
+
+        isHighlighted(i) { return this.highlighted === i; },
+        isSelected(option) { return String(option.value) === String(this.selected); },
+    };
+};
+
 Alpine.start();
 
 /* ──────────────────────────────────────────
@@ -172,46 +299,33 @@ const Progress = (() => {
     function updateSidebarActive(href) {
         const url = new URL(href, location.origin);
 
-        // Update <a> links
-        document.querySelectorAll('aside nav a[href]').forEach(link => {
-            const linkUrl = new URL(link.getAttribute('href'), location.origin);
-            const isActive = url.pathname.startsWith(linkUrl.pathname) && linkUrl.pathname !== '/admin/';
+        const INACTIVE_TEXT = ['text-slate-600', 'dark:text-violet-300/50', 'dark:text-violet-300/45'];
+        const INACTIVE_ICON = ['text-slate-400', 'dark:text-violet-500/60', 'dark:text-violet-500/55'];
+        const ACTIVE_TEXT   = 'nav-item-active';
+        const ACTIVE_ICON   = ['text-violet-600', 'dark:text-violet-400'];
 
-            // Exact match for dashboard to avoid prefix collision
-            const isDash = linkUrl.pathname === '/admin' || linkUrl.pathname === '/admin/';
+        document.querySelectorAll('aside nav a[href]').forEach(link => {
+            const linkUrl   = new URL(link.getAttribute('href'), location.origin);
+            const isDash    = linkUrl.pathname === '/admin' || linkUrl.pathname === '/admin/';
             const finalActive = isDash
                 ? (url.pathname === '/admin' || url.pathname === '/admin/')
                 : url.pathname.startsWith(linkUrl.pathname);
 
-            link.classList.toggle('nav-item-active', finalActive);
-            link.classList.toggle('text-white/50', !finalActive);
-            link.classList.toggle('text-white/45', false);
-            link.classList.toggle('hover:text-white', !finalActive);
-            link.classList.toggle('hover:bg-white/6', !finalActive);
-
-            const existingBar = link.querySelector('span.absolute');
-            if (finalActive && !existingBar) {
-                const span = document.createElement('span');
-                span.className = 'absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary-400 rounded-r';
-                link.insertBefore(span, link.firstChild);
-            } else if (!finalActive && existingBar) {
-                existingBar.remove();
-            }
+            link.classList.toggle(ACTIVE_TEXT, finalActive);
+            INACTIVE_TEXT.forEach(c => link.classList.toggle(c, !finalActive));
 
             const svg = link.querySelector('svg');
             if (svg) {
-                svg.classList.toggle('text-primary-400', finalActive);
-                svg.classList.toggle('text-white/40', !finalActive);
-                svg.classList.toggle('text-white/35', false);
-                svg.classList.toggle('group-hover:text-white/70', !finalActive);
+                ACTIVE_ICON.forEach(c => svg.classList.toggle(c, finalActive));
+                INACTIVE_ICON.forEach(c => svg.classList.toggle(c, !finalActive));
             }
         });
 
-        // Open Master Data group if navigating to students or subjects
-        const isMaster = url.pathname.includes('/admin/students') || url.pathname.includes('/admin/subjects');
+        // Open Master Data group if navigating to a child route
+        const isMaster = ['/admin/students', '/admin/subjects', '/admin/users']
+            .some(p => url.pathname.startsWith(p));
         document.querySelectorAll('aside nav [x-data]').forEach(el => {
             if (el._x_dataStack && isMaster) {
-                // set open = true on the Alpine component
                 try { el._x_dataStack[0].open = true; } catch {}
             }
         });
@@ -242,26 +356,6 @@ const Progress = (() => {
     if (document.readyState === 'complete') Progress.done();
     else window.addEventListener('load', Progress.done);
 })();
-
-/* ──────────────────────────────────────────
-   Dark mode toggle helper (used by layout)
-────────────────────────────────────────── */
-window.darkMode = function () {
-    return {
-        dark: localStorage.getItem('theme') === 'dark',
-        init() {
-            this.applyTheme();
-            this.$watch('dark', () => {
-                localStorage.setItem('theme', this.dark ? 'dark' : 'light');
-                this.applyTheme();
-            });
-        },
-        toggle() { this.dark = !this.dark; },
-        applyTheme() {
-            document.documentElement.classList.toggle('dark', this.dark);
-        },
-    };
-};
 
 /* Apply saved theme ASAP to avoid flash */
 (function () {

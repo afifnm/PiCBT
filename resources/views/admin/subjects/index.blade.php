@@ -24,6 +24,7 @@
         <table class="table-base">
             <thead>
                 <tr>
+                    <th class="w-10">No</th>
                     <th>Kode</th>
                     <th>Nama Mata Pelajaran</th>
                     <th class="text-center">Bank Soal</th>
@@ -31,8 +32,9 @@
                 </tr>
             </thead>
             <tbody>
-                <template x-for="s in subjects" :key="s.id">
+                <template x-for="(s, i) in subjects" :key="s.id">
                     <tr>
+                        <td class="text-surface-600 dark:text-surface-500 text-center text-xs tabular-nums" x-text="i + 1"></td>
                         <td>
                             <code class="font-mono bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300
                                          px-2 py-0.5 rounded text-xs font-semibold"
@@ -60,7 +62,7 @@
                     </tr>
                 </template>
                 <tr x-show="subjects.length === 0 && !loading">
-                    <td colspan="4" class="py-14 text-center">
+                    <td colspan="5" class="py-14 text-center">
                         <svg class="w-8 h-8 text-surface-200 dark:text-surface-700 mx-auto mb-2"
                              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -70,7 +72,7 @@
                     </td>
                 </tr>
                 <tr x-show="loading">
-                    <td colspan="4" class="py-8 text-center">
+                    <td colspan="5" class="py-8 text-center">
                         <div class="flex items-center justify-center gap-2 text-surface-400">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -85,24 +87,24 @@
     </div>
 
     {{-- MODAL: Create / Edit --}}
+    <template x-teleport="#modal-root">
     <div x-show="showModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+         @click.self="showModal = false"
+         class="modal-overlay">
         <div @click.stop
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="bg-white dark:bg-surface-900 rounded-2xl shadow-soft-lg w-full max-w-sm
-                    border border-surface-100 dark:border-surface-800">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-surface-100 dark:border-surface-800">
-                <h3 class="font-semibold text-surface-800 dark:text-surface-100" x-text="modalTitle"></h3>
-                <button @click="showModal = false"
-                        class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-colors p-1">
+             class="modal-panel max-w-lg">
+            <div class="modal-header">
+                <h3 x-text="modalTitle"></h3>
+                <button @click="showModal = false" class="modal-close">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
-            <form @submit.prevent="submitForm()" class="px-6 py-5 space-y-4">
+            <form @submit.prevent="submitForm()" class="modal-body space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
                         Kode <span class="text-red-500">*</span>
@@ -142,15 +144,18 @@
             </form>
         </div>
     </div>
+    </template>
 
     {{-- MODAL: Konfirmasi hapus --}}
+    <template x-teleport="#modal-root">
     <div x-show="showDelete" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div x-transition:enter="transition ease-out duration-200"
+         @click.self="showDelete = false; deleteError = ''"
+         class="modal-overlay">
+        <div @click.stop
+             x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="bg-white dark:bg-surface-900 rounded-2xl shadow-soft-lg w-full max-w-sm p-6 text-center
-                    border border-surface-100 dark:border-surface-800">
+             class="modal-panel max-w-sm p-6 text-center">
             <div class="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-4">
                 <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -178,6 +183,7 @@
             </div>
         </div>
     </div>
+    </template>
 
 </div>
 @endsection

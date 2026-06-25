@@ -16,6 +16,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="shortcut icon" href="/logo.webp" type="image/webp">
 
     {{-- Prevent dark-mode flash: apply theme before paint --}}
     <script>
@@ -27,15 +28,18 @@
     </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     @stack('head')
 
     <style>
-        /* Sidebar gradient background */
         .sidebar-bg {
-            background: linear-gradient(180deg, #1a1535 0%, #0f0d25 100%);
+            background: #ffffff;
+            border-right: 1px solid #ede9fe;
         }
         .dark .sidebar-bg {
-            background: linear-gradient(180deg, #111128 0%, #0a0a1c 100%);
+            background: linear-gradient(160deg, #1c1730 0%, #16122a 50%, #131828 100%);
+            border-right: 1px solid rgba(139,92,246,0.10);
         }
     </style>
 </head>
@@ -65,93 +69,103 @@
     ════════════════════════════════════════ --}}
     <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
            class="sidebar-bg fixed inset-y-0 left-0 z-40 w-64 flex flex-col
-                  transition-transform duration-200 ease-soft lg:static lg:flex
-                  border-r border-white/5">
+                  transition-transform duration-300 ease-out lg:static lg:flex">
 
         {{-- Logo --}}
-        <div class="flex items-center gap-3 px-5 py-5 border-b border-white/8">
-            <div class="w-9 h-9 rounded-xl flex items-center justify-center shadow-soft-md flex-none"
-                 style="background: linear-gradient(135deg,#7c6af6 0%,#a78bfa 100%)">
-                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
-                </svg>
+        <div class="flex items-center gap-3 px-5 pt-6 pb-5">
+            <div class="w-9 h-9 rounded-2xl flex items-center justify-center flex-none shadow-md"
+                 style="background: linear-gradient(135deg, #7c6af6 0%, #a78bfa 100%)">
+                <img src="/logo.webp" alt="PiCBT" class="w-6 h-6 object-contain brightness-0 invert">
             </div>
             <div>
-                <span class="font-bold text-white text-base tracking-tight">PiCBT</span>
-                <p class="text-[10px] text-white/40 leading-none mt-0.5">Admin Panel</p>
+                <span class="font-bold text-slate-800 dark:text-violet-100 text-base tracking-tight">PiCBT</span>
+                <p class="text-[10px] text-slate-400 dark:text-violet-500 leading-none mt-0.5 font-medium tracking-wider uppercase">Admin Panel</p>
             </div>
         </div>
 
         {{-- Navigation --}}
         @php
-            $isMasterActive = request()->routeIs('admin.students.*') || request()->routeIs('admin.subjects.*');
+            $isMasterActive = request()->routeIs('admin.students.*') || request()->routeIs('admin.subjects.*') || request()->routeIs('admin.users.*');
             $icons = [
                 'dashboard' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',
                 'master'    => '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
                 'students'  => '<path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>',
                 'subjects'  => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>',
+                'users'     => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>',
                 'bank'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>',
                 'exam'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>',
                 'results'   => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>',
                 'settings'  => '<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>',
+                'guide'     => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>',
             ];
         @endphp
-        <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
+
+        {{-- Section label --}}
+        <p class="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-violet-500/60">Menu</p>
+
+        <nav class="flex-1 px-3 pb-4 space-y-0.5 overflow-y-auto scrollbar-thin">
 
             {{-- Dashboard --}}
             @php $active = request()->routeIs('admin.dashboard'); @endphp
             <a href="{{ route('admin.dashboard') }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group relative
-                      {{ $active ? 'nav-item-active' : 'text-white/50 hover:text-white hover:bg-white/6' }}">
-                @if($active)<span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary-400 rounded-r"></span>@endif
-                <svg class="flex-none {{ $active ? 'text-primary-400' : 'text-white/40 group-hover:text-white/70' }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group
+                      {{ $active ? 'nav-item-active' : 'text-slate-600 dark:text-violet-300/50 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                <svg class="flex-none transition-colors {{ $active ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/60 group-hover:text-violet-500 dark:group-hover:text-violet-300' }}"
                      fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:18px;height:18px">
                     {!! $icons['dashboard'] !!}
                 </svg>
-                <span>Dashboard</span>
+                <span class="{{ $active ? 'font-semibold' : 'font-medium' }}">Dashboard</span>
             </a>
 
             {{-- Master Data (collapsible group) --}}
             <div x-data="{ open: {{ $isMasterActive ? 'true' : 'false' }} }">
                 <button @click="open = !open"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group relative
-                               {{ $isMasterActive ? 'nav-item-active' : 'text-white/50 hover:text-white hover:bg-white/6' }}">
-                    @if($isMasterActive)<span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary-400 rounded-r"></span>@endif
-                    <svg class="flex-none {{ $isMasterActive ? 'text-primary-400' : 'text-white/40 group-hover:text-white/70' }}"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group
+                               {{ $isMasterActive ? 'nav-item-active' : 'text-slate-600 dark:text-violet-300/50 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                    <svg class="flex-none transition-colors {{ $isMasterActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/60 group-hover:text-violet-500 dark:group-hover:text-violet-300' }}"
                          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:18px;height:18px">
                         {!! $icons['master'] !!}
                     </svg>
-                    <span class="flex-1 text-left">Master Data</span>
-                    <svg :class="open ? 'rotate-180' : ''" class="transition-transform duration-150 text-white/30" style="width:14px;height:14px"
+                    <span class="flex-1 text-left {{ $isMasterActive ? 'font-semibold' : 'font-medium' }}">Master Data</span>
+                    <svg :class="open ? 'rotate-180' : ''"
+                         class="transition-transform duration-200 text-slate-300 dark:text-violet-500/50" style="width:14px;height:14px"
                          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
 
-                <div x-show="open" x-collapse class="mt-0.5 ml-4 pl-3 border-l border-white/10 space-y-0.5">
+                <div x-show="open" x-collapse class="mt-1 ml-5 pl-3 border-l-2 border-slate-200 dark:border-violet-800/40 space-y-0.5">
                     @php $activeSt = request()->routeIs('admin.students.*'); @endphp
                     <a href="{{ route('admin.students.index') }}"
-                       class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group relative
-                              {{ $activeSt ? 'nav-item-active' : 'text-white/45 hover:text-white hover:bg-white/6' }}">
-                        @if($activeSt)<span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary-400 rounded-r"></span>@endif
-                        <svg class="flex-none {{ $activeSt ? 'text-primary-400' : 'text-white/35 group-hover:text-white/60' }}"
+                       class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group
+                              {{ $activeSt ? 'nav-item-active' : 'text-slate-600 dark:text-violet-300/45 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                        <svg class="flex-none transition-colors {{ $activeSt ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/55 group-hover:text-violet-500 dark:group-hover:text-violet-300' }}"
                              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:16px;height:16px">
                             {!! $icons['students'] !!}
                         </svg>
-                        <span>Siswa</span>
+                        <span class="{{ $activeSt ? 'font-semibold' : 'font-medium' }}">Siswa</span>
                     </a>
 
                     @php $activeSub = request()->routeIs('admin.subjects.*'); @endphp
                     <a href="{{ route('admin.subjects.index') }}"
-                       class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group relative
-                              {{ $activeSub ? 'nav-item-active' : 'text-white/45 hover:text-white hover:bg-white/6' }}">
-                        @if($activeSub)<span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary-400 rounded-r"></span>@endif
-                        <svg class="flex-none {{ $activeSub ? 'text-primary-400' : 'text-white/35 group-hover:text-white/60' }}"
+                       class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group
+                              {{ $activeSub ? 'nav-item-active' : 'text-slate-600 dark:text-violet-300/45 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                        <svg class="flex-none transition-colors {{ $activeSub ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/55 group-hover:text-violet-500 dark:group-hover:text-violet-300' }}"
                              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:16px;height:16px">
                             {!! $icons['subjects'] !!}
                         </svg>
-                        <span>Mata Pelajaran</span>
+                        <span class="{{ $activeSub ? 'font-semibold' : 'font-medium' }}">Mata Pelajaran</span>
+                    </a>
+
+                    @php $activeUsr = request()->routeIs('admin.users.*'); @endphp
+                    <a href="{{ route('admin.users.index') }}"
+                       class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group
+                              {{ $activeUsr ? 'nav-item-active' : 'text-slate-600 dark:text-violet-300/45 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                        <svg class="flex-none transition-colors {{ $activeUsr ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/55 group-hover:text-violet-500 dark:group-hover:text-violet-300' }}"
+                             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:16px;height:16px">
+                            {!! $icons['users'] !!}
+                        </svg>
+                        <span class="{{ $activeUsr ? 'font-semibold' : 'font-medium' }}">User Admin/Guru</span>
                     </a>
                 </div>
             </div>
@@ -160,45 +174,49 @@
             @php
                 $navRest = [
                     ['route' => 'admin.banks.index',    'label' => 'Bank Soal',   'icon' => 'bank'],
+                    ['route' => 'admin.banks.questions.guide', 'label' => 'Panduan Import', 'icon' => 'guide'],
                     ['route' => 'admin.exams.index',    'label' => 'Ujian',       'icon' => 'exam'],
                     ['route' => 'admin.results.index',  'label' => 'Rekap Nilai', 'icon' => 'results'],
                     ['route' => 'admin.settings.index', 'label' => 'Pengaturan',  'icon' => 'settings'],
                 ];
             @endphp
             @foreach ($navRest as $item)
-                @php $active = request()->routeIs($item['route']); @endphp
+                @php
+                    if ($item['route'] === 'admin.banks.index') {
+                        $active = request()->routeIs('admin.banks.*')
+                               && !request()->routeIs('admin.banks.questions.guide');
+                    } else {
+                        $active = request()->routeIs($item['route']);
+                    }
+                @endphp
                 <a href="{{ route($item['route']) }}"
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group relative
-                          {{ $active ? 'nav-item-active' : 'text-white/50 hover:text-white hover:bg-white/6' }}">
-                    @if($active)<span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary-400 rounded-r"></span>@endif
-                    <svg class="flex-none {{ $active ? 'text-primary-400' : 'text-white/40 group-hover:text-white/70' }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group
+                          {{ $active ? 'nav-item-active' : 'text-slate-600 dark:text-violet-300/50 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                    <svg class="flex-none transition-colors {{ $active ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/60 group-hover:text-violet-500 dark:group-hover:text-violet-300' }}"
                          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:18px;height:18px">
                         {!! $icons[$item['icon']] !!}
                     </svg>
-                    <span>{{ $item['label'] }}</span>
+                    <span class="{{ $active ? 'font-semibold' : 'font-medium' }}">{{ $item['label'] }}</span>
                 </a>
             @endforeach
 
         </nav>
 
-        {{-- Divider --}}
-        <div class="mx-4 border-t border-white/8"></div>
-
         {{-- User info --}}
-        <div class="px-3 py-4">
-            <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors group">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-none"
+        <div class="px-3 py-4 border-t border-slate-100 dark:border-violet-800/30">
+            <div class="flex items-center gap-3 px-2 py-2.5 rounded-2xl bg-slate-50 dark:bg-violet-900/20 border border-slate-200 dark:border-violet-800/30">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-none shadow-sm"
                      style="background: linear-gradient(135deg, #7c6af6, #a78bfa)">
                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white/85 truncate">{{ auth()->user()->name }}</p>
-                    <p class="text-xs text-white/35 capitalize">{{ auth()->user()->role }}</p>
-                </div>
+                <a href="{{ route('admin.profile.edit') }}" class="flex-1 min-w-0 group">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-violet-100 truncate group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors">{{ auth()->user()->name }}</p>
+                    <p class="text-xs text-slate-400 dark:text-violet-500 capitalize font-medium">{{ auth()->user()->role }} · Edit profil</p>
+                </a>
                 <form method="POST" action="{{ route('admin.logout') }}" data-spa-ignore>
                     @csrf
                     <button type="submit"
-                            class="text-white/30 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10"
+                            class="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
                             title="Logout">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -345,6 +363,8 @@
         @endif
         </div>
 
+        <div id="spa-scripts" style="display:none">@stack('scripts')</div>
+        
         {{-- Content --}}
         <main id="spa-main" class="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin">
             <div id="spa-content" class="page-enter max-w-screen-xl mx-auto">
@@ -355,7 +375,7 @@
 </div>
 
 @stack('modals')
-<div id="spa-scripts" style="display:none">@stack('scripts')</div>
+<div id="modal-root"></div>
 
 <script>
 if ('serviceWorker' in navigator) {

@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class StudentController extends Controller
@@ -33,21 +35,27 @@ class StudentController extends Controller
 
         $students = $query->orderBy('nama')->paginate(20);
 
-        // Append kelas_sekarang accessor on each item
-        $students->through(fn ($s) => array_merge($s->toArray(), [
+        // Append kelas_sekarang accessor and filter by kelas if needed
+        $collection = $students->getCollection()->map(fn ($s) => array_merge($s->toArray(), [
             'kelas_sekarang' => $s->kelas_sekarang,
         ]));
 
-        // Filter by kelas after pagination (accessor-based, not DB column)
         if ($request->filled('kelas')) {
-            $kelas    = $request->kelas;
-            $filtered = $students->getCollection()->filter(
-                fn ($s) => ($s['kelas_sekarang'] ?? '') === $kelas
+            $collection = $collection->filter(
+                fn ($s) => ($s['kelas_sekarang'] ?? '') === $request->kelas
             )->values();
-            $students->setCollection($filtered);
         }
 
-        return response()->json($students);
+        return response()->json([
+            'data' => $collection->values(),
+            'meta' => [
+                'total'        => $students->total(),
+                'current_page' => $students->currentPage(),
+                'last_page'    => $students->lastPage(),
+                'from'         => $students->firstItem(),
+                'to'           => $students->lastItem(),
+            ],
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -121,8 +129,19 @@ class StudentController extends Controller
         $dir = dirname($path);
         if (! is_dir($dir)) mkdir($dir, 0755, true);
 
-        // Simple CSV fallback — replace with PhpSpreadsheet if needed
-        $csv = "nis,nama,tahun_masuk,jurusan\n2025001,Contoh Nama,2025,TKJ\n";
-        file_put_contents(str_replace('.xlsx', '.csv', $path), $csv);
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $headers = ['nis', 'nama', 'tahun_masuk', 'jurusan'];
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValueByColumnAndRow($col + 1, 1, $header);
+        }
+
+        $sheet->setCellValueByColumnAndRow(1, 2, '2025001');
+        $sheet->setCellValueByColumnAndRow(2, 2, 'Contoh Nama');
+        $sheet->setCellValueByColumnAndRow(3, 2, 2025);
+        $sheet->setCellValueByColumnAndRow(4, 2, 'TKJ');
+
+        (new Xlsx($spreadsheet))->save($path);
     }
 }

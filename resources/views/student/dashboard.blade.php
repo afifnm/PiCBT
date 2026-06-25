@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Siswa — PiCBT</title>
+    <link rel="shortcut icon" href="/logo.webp" type="image/webp">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-full">
@@ -12,7 +13,7 @@
 <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
     <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">CBT</div>
+            <img src="/logo.webp" alt="PiCBT" class="w-8 h-8 rounded-lg object-contain">
             <span class="font-bold text-slate-800">PiCBT</span>
         </div>
         <div class="flex items-center gap-4">
@@ -120,6 +121,7 @@
                             <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs">Tanggal</th>
                             <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs">Skor</th>
                             <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs">Status</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -144,6 +146,12 @@
                                         {{ $h->status === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' }}">
                                         {{ $h->status === 'selesai' ? 'Selesai' : 'Dikeluarkan' }}
                                     </span>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <a href="{{ route('student.review', $h->id) }}"
+                                       class="text-xs px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 transition">
+                                        Review
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach

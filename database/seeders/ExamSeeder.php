@@ -54,6 +54,7 @@ class ExamSeeder extends Seeder
                 'selesai_pada'       => now()->addDay()->addHours(3),
                 'max_pelanggaran'    => null,
                 'auto_keluar'        => false,
+                'tampilkan_peringatan' => false, // rekam kecurangan diam-diam, tanpa peringatan ke siswa
                 'status'             => 'draft',
             ]
         );

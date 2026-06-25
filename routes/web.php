@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\StudentLoginController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboard;
+use App\Http\Controllers\Student\ExamAttemptController as StudentAttemptController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,4 +35,5 @@ Route::post('/siswa/logout',[StudentLoginController::class, 'logout'])->name('st
 Route::middleware(['auth.student'])->prefix('siswa')->name('student.')->group(function () {
     Route::get('/',                            [StudentDashboard::class, 'index'])->name('dashboard');
     Route::post('/exam/{examId}/start',        [StudentDashboard::class, 'startExam'])->name('exam.start');
+    Route::get('/riwayat/{attempt}',           [StudentAttemptController::class, 'review'])->name('review');
 });

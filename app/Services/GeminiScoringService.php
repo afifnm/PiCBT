@@ -18,7 +18,7 @@ class GeminiScoringService
     public function __construct()
     {
         $this->apiKey = $this->resolveApiKey();
-        $this->model  = Setting::get('gemini_model', 'gemini-1.5-flash');
+        $this->model  = Setting::get('gemini_model', 'gemini-2.5-flash');
     }
 
     /**
@@ -30,6 +30,12 @@ class GeminiScoringService
         $question = $answer->question;
 
         if ($question->tipe !== 'esai') {
+            return false;
+        }
+
+        // Skip essays that already have a correction (AI or manual).
+        // AI correction must never overwrite an existing score.
+        if ($answer->dinilai_oleh !== null) {
             return false;
         }
 
@@ -55,13 +61,16 @@ class GeminiScoringService
                 return $this->markPendingManual($answer);
             }
 
-            $result = $this->parseResponse($response->json(), (float) $question->bobot);
+            $json   = $response->json();
+            $result = $this->parseResponse($json, (float) $question->bobot);
 
             $answer->update([
                 'skor'         => $result['skor'],
                 'ai_feedback'  => $result['feedback'],
                 'dinilai_oleh' => 'ai',
             ]);
+
+            $this->accumulateTokens($json);
 
             return true;
 
@@ -76,14 +85,15 @@ class GeminiScoringService
     }
 
     /**
-     * Batch-score all unscored essay answers for an attempt.
+     * Batch-score all un-corrected essay answers for an attempt.
+     * Answers that already have a correction (dinilai_oleh set) are skipped.
      * Returns ['success' => n, 'failed' => n].
      */
     public function scoreAttempt(int $attemptId): array
     {
         $answers = AttemptAnswer::where('exam_attempt_id', $attemptId)
             ->whereHas('question', fn ($q) => $q->where('tipe', 'esai'))
-            ->whereNull('skor')
+            ->whereNull('dinilai_oleh')
             ->with('question')
             ->get();
 
@@ -179,6 +189,20 @@ PROMPT;
         ]);
 
         return false;
+    }
+
+    private function accumulateTokens(array $json): void
+    {
+        $usage = $json['usageMetadata'] ?? [];
+        $in    = (int) ($usage['promptTokenCount']     ?? 0);
+        $out   = (int) ($usage['candidatesTokenCount'] ?? 0);
+
+        if ($in === 0 && $out === 0) {
+            return;
+        }
+
+        Setting::set('ai_tokens_input',  (int) Setting::get('ai_tokens_input',  0) + $in);
+        Setting::set('ai_tokens_output', (int) Setting::get('ai_tokens_output', 0) + $out);
     }
 
     private function endpointUrl(): string

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "59adcc9a664d885b5db0b61f5e5495d7",
+    "content-hash": "006856c6191cd28dedfa249b54f204fb",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -1729,16 +1729,16 @@
         },
         {
             "name": "laravel/prompts",
-            "version": "v0.3.18",
+            "version": "v0.3.20",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/prompts.git",
-                "reference": "a19af51bb144bf87f08397921fa619f85c7d4e72"
+                "reference": "6d53c826dfd33ec5f4ac91f816ff327727c7988b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/prompts/zipball/a19af51bb144bf87f08397921fa619f85c7d4e72",
-                "reference": "a19af51bb144bf87f08397921fa619f85c7d4e72",
+                "url": "https://api.github.com/repos/laravel/prompts/zipball/6d53c826dfd33ec5f4ac91f816ff327727c7988b",
+                "reference": "6d53c826dfd33ec5f4ac91f816ff327727c7988b",
                 "shasum": ""
             },
             "require": {
@@ -1782,9 +1782,9 @@
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
             "support": {
                 "issues": "https://github.com/laravel/prompts/issues",
-                "source": "https://github.com/laravel/prompts/tree/v0.3.18"
+                "source": "https://github.com/laravel/prompts/tree/v0.3.20"
             },
-            "time": "2026-05-19T00:47:18+00:00"
+            "time": "2026-06-24T19:16:38+00:00"
         },
         {
             "name": "laravel/serializable-closure",
@@ -9401,5 +9401,8 @@
         "php": "^8.3"
     },
     "platform-dev": {},
+    "platform-overrides": {
+        "php": "8.4.99"
+    },
     "plugin-api-version": "2.9.0"
 }

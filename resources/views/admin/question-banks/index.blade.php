@@ -62,33 +62,33 @@
     </div>
 
     {{-- MODAL: Create/Edit Bank Soal --}}
+    <template x-teleport="#modal-root">
     <div x-show="showModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+         @click.self="showModal = false"
+         class="modal-overlay">
         <div @click.stop
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="bg-white dark:bg-surface-900 rounded-2xl shadow-soft-lg w-full max-w-md border border-surface-100 dark:border-surface-800">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-surface-100 dark:border-surface-800">
-                <h3 class="font-semibold text-surface-800 dark:text-surface-100" x-text="modalTitle"></h3>
-                <button @click="showModal = false"
-                        class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-colors p-1">
+             class="modal-panel max-w-lg">
+            <div class="modal-header">
+                <h3 x-text="modalTitle"></h3>
+                <button @click="showModal = false" class="modal-close">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
-            <form @submit.prevent="submitForm()" class="px-6 py-5 space-y-4">
+            <form @submit.prevent="submitForm()" class="modal-body space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
                         Mata Pelajaran <span class="text-red-500">*</span>
                     </label>
-                    <select x-model="form.subject_id" class="input-base">
-                        <option value="">— Pilih Mapel —</option>
-                        @foreach ($subjects as $s)
-                            <option value="{{ $s->id }}">{{ $s->nama }} ({{ $s->kode }})</option>
-                        @endforeach
-                    </select>
+                    <x-searchable-select
+                        model="form.subject_id"
+                        placeholder="— Pilih Mapel —"
+                        search-placeholder="Cari mapel..."
+                        :options="$subjects->map(fn ($s) => ['value' => $s->id, 'label' => $s->nama.' ('.$s->kode.')'])->values()" />
                     <p x-show="errors.subject_id" x-text="errors.subject_id" class="text-xs text-red-500 mt-1"></p>
                 </div>
                 <div>
@@ -117,14 +117,18 @@
             </form>
         </div>
     </div>
+    </template>
 
     {{-- MODAL: Konfirmasi hapus --}}
+    <template x-teleport="#modal-root">
     <div x-show="showDelete" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div x-transition:enter="transition ease-out duration-200"
+         @click.self="showDelete = false"
+         class="modal-overlay">
+        <div @click.stop
+             x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="bg-white dark:bg-surface-900 rounded-2xl shadow-soft-lg w-full max-w-sm p-6 text-center border border-surface-100 dark:border-surface-800">
+             class="modal-panel max-w-sm p-6 text-center">
             <div class="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-4">
                 <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -134,6 +138,21 @@
             <p class="text-sm text-surface-500 dark:text-surface-400 mb-6">
                 "<span x-text="deleteTarget?.judul"></span>" dan semua soal di dalamnya akan dihapus permanen.
             </p>
+            
+            <div class="mb-6 bg-surface-50 dark:bg-surface-800/50 rounded-xl p-3 text-left border border-surface-200 dark:border-surface-700">
+                <label class="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" x-model="forceDelete" class="mt-1 w-4 h-4 text-red-600 rounded border-surface-300 dark:border-surface-600 focus:ring-red-500 dark:bg-surface-900">
+                    <span class="text-xs text-surface-600 dark:text-surface-400">
+                        <strong class="text-red-600 dark:text-red-400 font-semibold block mb-0.5">Paksa Hapus Semua Relasi</strong>
+                        Centang ini jika Anda juga ingin menghapus seluruh Jadwal Ujian dan Jawaban Siswa yang terkait dengan bank soal ini.
+                    </span>
+                </label>
+            </div>
+
+            <div x-show="deleteError"
+                 class="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800
+                        rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400 mb-6"
+                 x-text="deleteError"></div>
             <div class="flex gap-3">
                 <button @click="showDelete = false" class="btn-ghost flex-1 justify-center">Batal</button>
                 <button @click="doDelete()"
@@ -144,6 +163,7 @@
             </div>
         </div>
     </div>
+    </template>
 
 </div>
 @endsection
@@ -156,7 +176,7 @@ function bankPage() {
         showModal: false, modalTitle: '', editMode: false, editId: null,
         form: { subject_id: '', judul: '', deskripsi: '' },
         errors: {}, formError: '', submitting: false,
-        showDelete: false, deleteTarget: null,
+        showDelete: false, deleteTarget: null, deleteError: '', forceDelete: false,
 
         async fetchBanks() {
             this.loading = true;
@@ -197,13 +217,19 @@ function bankPage() {
             this.submitting = false;
         },
 
-        confirmDelete(b) { this.deleteTarget = b; this.showDelete = true; },
+        confirmDelete(b) { this.deleteTarget = b; this.deleteError = ''; this.forceDelete = false; this.showDelete = true; },
         async doDelete() {
-            await fetch(`{{ url('admin/banks') }}/${this.deleteTarget.id}`, {
+            this.deleteError = '';
+            const res = await fetch(`{{ url('admin/banks') }}/${this.deleteTarget.id}?force=${this.forceDelete ? 1 : 0}`, {
                 method: 'DELETE',
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
             });
-            this.showDelete = false; this.fetchBanks();
+            if (res.ok) {
+                this.showDelete = false; this.fetchBanks();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                this.deleteError = data.message || 'Gagal menghapus bank soal.';
+            }
         },
 
         init() { this.fetchBanks(); },

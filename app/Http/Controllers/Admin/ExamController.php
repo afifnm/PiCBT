@@ -47,10 +47,11 @@ class ExamController extends Controller
             'durasi_menit'       => ['required', 'integer', 'min:1', 'max:480'],
             'mulai_pada'         => ['nullable', 'date'],
             'selesai_pada'       => ['nullable', 'date', 'after_or_equal:mulai_pada'],
-            'acak_soal'          => ['boolean'],
-            'acak_opsi'          => ['boolean'],
-            'auto_keluar'        => ['boolean'],
-            'max_pelanggaran'    => ['nullable', 'integer', 'min:1', 'max:99'],
+            'acak_soal'            => ['boolean'],
+            'acak_opsi'            => ['boolean'],
+            'auto_keluar'          => ['boolean'],
+            'tampilkan_peringatan' => ['boolean'],
+            'max_pelanggaran'      => ['nullable', 'integer', 'min:1', 'max:99'],
         ]);
 
         $exam = DB::transaction(function () use ($data) {
@@ -81,10 +82,11 @@ class ExamController extends Controller
             'durasi_menit'       => ['required', 'integer', 'min:1', 'max:480'],
             'mulai_pada'         => ['nullable', 'date'],
             'selesai_pada'       => ['nullable', 'date', 'after_or_equal:mulai_pada'],
-            'acak_soal'          => ['boolean'],
-            'acak_opsi'          => ['boolean'],
-            'auto_keluar'        => ['boolean'],
-            'max_pelanggaran'    => ['nullable', 'integer', 'min:1'],
+            'acak_soal'            => ['boolean'],
+            'acak_opsi'            => ['boolean'],
+            'auto_keluar'          => ['boolean'],
+            'tampilkan_peringatan' => ['boolean'],
+            'max_pelanggaran'      => ['nullable', 'integer', 'min:1'],
         ]);
 
         DB::transaction(function () use ($exam, $data) {
@@ -152,7 +154,27 @@ class ExamController extends Controller
                 'terjadi_at'   => $log->terjadi_at->format('H:i:s'),
             ]);
 
-        return response()->json(compact('attempts', 'counts', 'recentCheats'));
+        // Progres per soal: berapa siswa yang sudah menjawab masing-masing soal
+        $totalQuestions = $exam->examQuestions()->count();
+        $questionProgress = \App\Models\AttemptAnswer::whereHas('attempt', fn ($q) =>
+                $q->where('exam_id', $exam->id)->where('is_void', false)
+            )
+            ->select('question_id', DB::raw('count(*) as jawab_count'))
+            ->groupBy('question_id')
+            ->get()
+            ->keyBy('question_id')
+            ->map(fn ($r) => $r->jawab_count);
+
+        $soalProgress = $exam->examQuestions()
+            ->with('question:id,pertanyaan')
+            ->orderBy('urutan')
+            ->get()
+            ->map(fn ($eq) => [
+                'urutan'      => $eq->urutan,
+                'jawab_count' => $questionProgress[$eq->question_id] ?? 0,
+            ]);
+
+        return response()->json(compact('attempts', 'counts', 'recentCheats', 'soalProgress', 'totalQuestions'));
     }
 
     // -----------------------------------------------------------------------

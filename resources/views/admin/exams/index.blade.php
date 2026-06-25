@@ -30,6 +30,7 @@
         <table class="table-base">
             <thead>
                 <tr>
+                    <th class="w-10">No</th>
                     <th>Ujian</th>
                     <th>Token</th>
                     <th>Kelas</th>
@@ -40,8 +41,9 @@
                 </tr>
             </thead>
             <tbody>
-                <template x-for="e in exams" :key="e.id">
+                <template x-for="(e, i) in exams" :key="e.id">
                     <tr>
+                        <td class="text-surface-600 dark:text-surface-500 text-center text-xs tabular-nums" x-text="i + 1"></td>
                         <td>
                             <p class="font-medium" x-text="e.judul"></p>
                             <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5"
@@ -97,7 +99,7 @@
                     </tr>
                 </template>
                 <tr x-show="exams.length === 0 && !loading">
-                    <td colspan="7" class="py-12 text-center">
+                    <td colspan="8" class="py-12 text-center">
                         <svg class="w-8 h-8 text-surface-200 dark:text-surface-700 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>
@@ -109,26 +111,25 @@
     </div>
 
     {{-- MODAL: Buat / Edit Ujian --}}
+    <template x-teleport="#modal-root">
     <div x-show="showModal" x-cloak
-         class="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+         @click.self="showModal = false"
+         class="modal-overlay modal-top">
         <div @click.stop
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="bg-white dark:bg-surface-900 rounded-2xl shadow-soft-lg w-full max-w-2xl my-8
-                    border border-surface-100 dark:border-surface-800">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-surface-100 dark:border-surface-800 sticky top-0
-                        bg-white dark:bg-surface-900 rounded-t-2xl z-10">
-                <h3 class="font-semibold text-surface-800 dark:text-surface-100" x-text="modalTitle"></h3>
-                <button @click="showModal = false"
-                        class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-colors p-1">
+             class="modal-panel max-w-2xl my-8">
+            <div class="modal-header sticky top-0 bg-white dark:bg-surface-900 rounded-t-2xl z-10">
+                <h3 x-text="modalTitle"></h3>
+                <button @click="showModal = false" class="modal-close">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
 
-            <form @submit.prevent="submitExam()" class="px-6 py-5 space-y-5">
+            <form @submit.prevent="submitExam()" class="modal-body space-y-5">
                 <div>
                     <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
                         Judul Ujian <span class="text-red-500">*</span>
@@ -142,12 +143,11 @@
                         <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
                             Bank Soal <span class="text-red-500">*</span>
                         </label>
-                        <select x-model="form.question_bank_id" class="input-base">
-                            <option value="">— Pilih Bank Soal —</option>
-                            @foreach ($banks as $b)
-                                <option value="{{ $b->id }}">{{ $b->judul }} ({{ $b->subject->nama }})</option>
-                            @endforeach
-                        </select>
+                        <x-searchable-select
+                            model="form.question_bank_id"
+                            placeholder="— Pilih Bank Soal —"
+                            search-placeholder="Cari bank soal..."
+                            :options="$banks->map(fn ($b) => ['value' => $b->id, 'label' => $b->judul.' ('.$b->subject->nama.')'])->values()" />
                         <p x-show="errors.question_bank_id" x-text="errors.question_bank_id" class="text-xs text-red-500 mt-1"></p>
                     </div>
                     <div>
@@ -208,7 +208,14 @@
                             <input type="checkbox" x-model="form.auto_keluar" class="accent-red-500 rounded">
                             Auto-keluar saat batas pelanggaran
                         </label>
+                        <label class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-200 cursor-pointer">
+                            <input type="checkbox" x-model="form.tampilkan_peringatan" class="accent-primary-600 rounded">
+                            Tampilkan peringatan kecurangan
+                        </label>
                     </div>
+                    <p class="text-xs text-surface-400 dark:text-surface-500 -mt-1" x-show="!form.tampilkan_peringatan">
+                        Pelanggaran tetap direkam diam-diam untuk admin, tetapi siswa tidak menerima peringatan.
+                    </p>
                     <div x-show="form.auto_keluar">
                         <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
                             Maks. Pelanggaran <span class="text-red-500">*</span>
@@ -247,6 +254,7 @@
             </form>
         </div>
     </div>
+    </template>
 
 </div>
 @endsection
@@ -258,6 +266,7 @@ function examPage() {
         judul: '', question_bank_id: '', target_kelas: '', target_tahun_masuk: '',
         durasi_menit: 60, mulai_pada: '', selesai_pada: '',
         acak_soal: false, acak_opsi: false, auto_keluar: false,
+        tampilkan_peringatan: true,
         max_pelanggaran: 3, token: '',
     });
 
@@ -292,6 +301,7 @@ function examPage() {
                 selesai_pada: e.selesai_pada ? e.selesai_pada.slice(0, 16) : '',
                 acak_soal: e.acak_soal, acak_opsi: e.acak_opsi,
                 auto_keluar: e.auto_keluar, max_pelanggaran: e.max_pelanggaran ?? 3,
+                tampilkan_peringatan: e.tampilkan_peringatan ?? true,
                 token: e.token,
             };
             this.errors = {}; this.formError = '';

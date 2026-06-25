@@ -22,6 +22,7 @@ return new class extends Migration
             $table->dateTime('selesai_pada')->nullable();
             $table->unsignedTinyInteger('max_pelanggaran')->nullable(); // null = hanya rekam
             $table->boolean('auto_keluar')->default(false);
+            $table->boolean('tampilkan_peringatan')->default(true); // false = rekam diam-diam tanpa peringatan ke siswa
             $table->enum('status', ['draft', 'published', 'closed'])->default('draft');
             $table->timestamps();
 

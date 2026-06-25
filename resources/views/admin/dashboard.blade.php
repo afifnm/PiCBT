@@ -5,7 +5,7 @@
 @section('content')
 
 {{-- Stat cards --}}
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
     @php
         $cards = [
             [
@@ -62,6 +62,110 @@
         </div>
     @endforeach
 </div>
+
+{{-- AI Token Usage Card --}}
+<div class="card p-5 mb-6">
+    <div class="flex items-center gap-2 mb-4">
+        <div class="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center flex-none">
+            <svg class="w-4 h-4 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/>
+            </svg>
+        </div>
+        <h2 class="font-semibold text-surface-800 dark:text-surface-100 text-sm">Penggunaan AI (Gemini)</h2>
+        <span class="text-xs text-surface-400 dark:text-surface-500 ml-auto">Kumulatif sejak pertama digunakan</span>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mb-1">Token Input</p>
+            <p class="text-xl font-bold text-violet-600 dark:text-violet-400">
+                {{ number_format($aiTokensInput) }}
+            </p>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5">prompt tokens</p>
+        </div>
+        <div>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mb-1">Token Output</p>
+            <p class="text-xl font-bold text-violet-600 dark:text-violet-400">
+                {{ number_format($aiTokensOutput) }}
+            </p>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5">response tokens</p>
+        </div>
+        <div>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mb-1">Estimasi Biaya</p>
+            <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                ${{ number_format($aiCostUsd, 4) }}
+            </p>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5">USD</p>
+        </div>
+        <div>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mb-1">Estimasi Biaya</p>
+            <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                Rp {{ number_format($aiCostIdr, 0, ',', '.') }}
+            </p>
+            <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5">IDR (~Rp16.300/$)</p>
+        </div>
+    </div>
+
+    @if ($aiTokensInput === 0 && $aiTokensOutput === 0)
+        <p class="text-xs text-surface-400 dark:text-surface-500 mt-3 pt-3 border-t border-surface-100 dark:border-surface-800">
+            Belum ada penggunaan AI yang tercatat. Token akan terakumulasi setelah Koreksi AI digunakan.
+        </p>
+    @else
+        <p class="text-xs text-surface-300 dark:text-surface-600 mt-3 pt-3 border-t border-surface-100 dark:border-surface-800">
+            Harga referensi: Gemini 2.5 Flash — Input $0.30/1M token, Output $2.50/1M token.
+        </p>
+    @endif
+</div>
+
+{{-- Analytics Skor Ujian --}}
+@if ($analytics->isNotEmpty())
+<div class="card p-5 mb-6">
+    <div class="flex items-center gap-2 mb-4">
+        <div class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center flex-none">
+            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+        </div>
+        <h2 class="font-semibold text-surface-800 dark:text-surface-100 text-sm">Analitik Skor — Ujian Selesai</h2>
+        <span class="text-xs text-surface-400 dark:text-surface-500 ml-auto">5 ujian terbaru</span>
+    </div>
+
+    <div class="space-y-4">
+        @foreach ($analytics as $item)
+        <div>
+            <div class="flex items-center justify-between mb-1.5 gap-3 flex-wrap">
+                <p class="text-sm font-medium text-surface-700 dark:text-surface-200 truncate">{{ $item['judul'] }}</p>
+                <div class="flex items-center gap-3 text-xs text-surface-400 dark:text-surface-500 flex-none">
+                    <span>{{ $item['peserta'] }} peserta</span>
+                    <span>Rata-rata: <strong class="text-surface-700 dark:text-surface-200">{{ $item['avg'] }}</strong></span>
+                    <span>Tertinggi: <strong class="text-emerald-600 dark:text-emerald-400">{{ $item['max'] }}</strong></span>
+                </div>
+            </div>
+            {{-- Distribusi skor (5 bucket: 0-19, 20-39, 40-59, 60-79, 80-100) --}}
+            @php $maxBucket = max(1, max($item['buckets'])); @endphp
+            <div class="flex items-end gap-1 h-10">
+                @foreach ($item['buckets'] as $bi => $count)
+                    @php
+                        $labels = ['0–19','20–39','40–59','60–79','80–100'];
+                        $pct    = round(($count / $maxBucket) * 100);
+                        $colors = ['bg-red-400','bg-orange-400','bg-amber-400','bg-lime-400','bg-emerald-400'];
+                    @endphp
+                    <div class="flex-1 flex flex-col items-center gap-0.5" title="{{ $labels[$bi] }}: {{ $count }} siswa">
+                        <div class="{{ $colors[$bi] }} rounded-t w-full transition-all"
+                             style="height: {{ max(4, $pct) }}%"></div>
+                        <span class="text-[9px] text-surface-400 dark:text-surface-600">{{ $labels[$bi] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @unless ($loop->last)
+            <hr class="border-surface-100 dark:border-surface-800">
+        @endunless
+        @endforeach
+    </div>
+</div>
+@endif
 
 {{-- Main grid --}}
 <div class="grid lg:grid-cols-2 gap-5">

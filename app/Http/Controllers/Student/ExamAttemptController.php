@@ -40,13 +40,47 @@ class ExamAttemptController extends Controller
         $exam      = $attempt->exam;
         $questions = $exam->examQuestions->sortBy('urutan');
 
+        if ($exam->acak_soal) {
+            $questions = $questions->shuffle();
+        }
+
+        if ($exam->acak_opsi) {
+            $questions = $questions->map(function ($eq) {
+                $eq->question->setRelation('options', $eq->question->options->shuffle());
+                return $eq;
+            });
+        }
+
         $answers = AttemptAnswer::where('exam_attempt_id', $attempt->id)
             ->get()
             ->keyBy('question_id');
 
-        $sisaDetik = max(0, now()->diffInSeconds($attempt->batas_waktu_at, false));
+        $sisaDetik = (int) max(0, now()->diffInSeconds($attempt->batas_waktu_at, false));
 
         return view('exam.take', compact('attempt', 'questions', 'answers', 'sisaDetik'));
+    }
+
+    // ------------------------------------------------------------------
+    // Review jawaban setelah ujian (GET /siswa/riwayat/{attempt})
+    // ------------------------------------------------------------------
+    public function review(int $attemptId): View|RedirectResponse
+    {
+        $student = Auth::guard('student')->user();
+
+        $attempt = ExamAttempt::with([
+            'exam.examQuestions.question.options',
+            'answers.question.options',
+        ])
+        ->where('id', $attemptId)
+        ->where('student_id', $student->id)
+        ->where('is_void', false)
+        ->whereIn('status', ['selesai', 'dikeluarkan'])
+        ->firstOrFail();
+
+        $answers = $attempt->answers->keyBy('question_id');
+        $questions = $attempt->exam->examQuestions->sortBy('urutan');
+
+        return view('student.review', compact('attempt', 'questions', 'answers'));
     }
 
     // ------------------------------------------------------------------
@@ -104,7 +138,7 @@ class ExamAttemptController extends Controller
             ]);
         }
 
-        $sisaDetik = max(0, now()->diffInSeconds($attempt->batas_waktu_at, false));
+        $sisaDetik = (int) max(0, now()->diffInSeconds($attempt->batas_waktu_at, false));
 
         if ($sisaDetik <= 0) {
             $this->_doSubmit($attempt, 'auto');

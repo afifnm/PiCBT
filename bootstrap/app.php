@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active.user'  => \App\Http\Middleware\EnsureUserIsActive::class,
             'auth.student' => \App\Http\Middleware\AuthenticateStudent::class,
+            'auth'         => \App\Http\Middleware\Authenticate::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Unauthenticated.'], 401);
             }
+            return redirect()->route('admin.login');
         });
     })
     ->create();
