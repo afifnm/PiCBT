@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ScoreEssayAnswerJob;
+use App\Jobs\ScoreAttemptEssaysJob;
 use App\Models\AttemptAnswer;
 use App\Models\CheatLog;
 use App\Models\ExamAttempt;
@@ -243,11 +243,8 @@ class ExamAttemptController extends Controller
             'void_reason' => $reason,
         ]);
 
-        // Dispatch async AI scoring for all essay answers
-        AttemptAnswer::where('exam_attempt_id', $attempt->id)
-            ->whereHas('question', fn ($q) => $q->where('tipe', 'esai'))
-            ->whereNull('dinilai_oleh')
-            ->each(fn ($a) => ScoreEssayAnswerJob::dispatch($a->id));
+        // Dispatch single job yang menskor semua essay attempt sekaligus (1 job per attempt)
+        ScoreAttemptEssaysJob::dispatch($attempt->id);
 
         return ['status' => $newStatus, 'reason' => $reason];
     }
@@ -259,20 +256,27 @@ class ExamAttemptController extends Controller
             ->with('question.options')
             ->get();
 
+        if ($answers->isEmpty()) {
+            return 0.0;
+        }
+
+        $rows  = [];
         $total = 0.0;
 
         foreach ($answers as $answer) {
             $correct = $answer->question->options
                 ->firstWhere('is_correct', true)?->label;
 
-            if ($correct && $answer->jawaban_pg === $correct) {
-                $skor = (float) $answer->question->bobot;
-                $answer->update(['skor' => $skor, 'dinilai_oleh' => 'ai']);
-                $total += $skor;
-            } else {
-                $answer->update(['skor' => 0, 'dinilai_oleh' => 'ai']);
-            }
+            $skor = ($correct && $answer->jawaban_pg === $correct)
+                ? (float) $answer->question->bobot
+                : 0.0;
+
+            $rows[]  = ['id' => $answer->id, 'skor' => $skor, 'dinilai_oleh' => 'ai'];
+            $total  += $skor;
         }
+
+        // Single bulk UPDATE instead of N individual UPDATEs
+        AttemptAnswer::upsert($rows, ['id'], ['skor', 'dinilai_oleh']);
 
         return $total;
     }

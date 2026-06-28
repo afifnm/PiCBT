@@ -7,7 +7,7 @@
 
     {{-- Toolbar --}}
     <div class="flex flex-wrap gap-3 mb-5">
-        <div class="flex-1 min-w-48">
+        <div class="flex-1 min-w-0">
             <input type="text" x-model="search" @input.debounce.400ms="fetchExams()"
                    placeholder="Cari judul ujian..." class="input-base">
         </div>
@@ -26,7 +26,39 @@
     </div>
 
     {{-- Tabel ujian --}}
-    <div class="card overflow-hidden">
+    <div class="card overflow-hidden" x-data="{ detailSheet: null }">
+
+        {{-- Mobile: card list --}}
+        <div class="sm:hidden divide-y divide-surface-100 dark:divide-surface-800">
+            <template x-for="(e, i) in exams" :key="e.id">
+                <button @click="detailSheet = e"
+                        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-800/60 transition-colors text-left">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <p class="font-medium text-surface-800 dark:text-surface-100 truncate" x-text="e.judul"></p>
+                        </div>
+                        <p class="text-xs text-surface-400" x-text="`Kelas ${e.target_kelas} · ${e.durasi_menit} mnt · ${e.jumlah_soal} soal`"></p>
+                    </div>
+                    <span class="badge flex-none"
+                          :class="{ 'badge-slate': e.status==='draft', 'badge-green': e.status==='published', 'badge-red': e.status==='closed' }"
+                          x-text="{ draft:'Draft', published:'Aktif', closed:'Ditutup' }[e.status]"></span>
+                    <svg class="w-4 h-4 text-surface-300 dark:text-surface-600 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </template>
+            <div x-show="exams.length === 0 && !loading" class="py-12 text-center text-sm text-surface-400">Belum ada ujian.</div>
+            <div x-show="loading" class="py-8 flex items-center justify-center gap-2 text-surface-400">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                <span class="text-sm">Memuat data...</span>
+            </div>
+        </div>
+
+        {{-- Desktop: table --}}
+        <div class="hidden sm:block overflow-x-auto">
         <table class="table-base">
             <thead>
                 <tr>
@@ -65,12 +97,8 @@
                         </td>
                         <td>
                             <span class="badge"
-                                  :class="{
-                                    'badge-slate':  e.status === 'draft',
-                                    'badge-green':  e.status === 'published',
-                                    'badge-red':    e.status === 'closed',
-                                  }"
-                                  x-text="{ draft: 'Draft', published: 'Aktif', closed: 'Ditutup' }[e.status]">
+                                  :class="{ 'badge-slate': e.status==='draft', 'badge-green': e.status==='published', 'badge-red': e.status==='closed' }"
+                                  x-text="{ draft:'Draft', published:'Aktif', closed:'Ditutup' }[e.status]">
                             </span>
                         </td>
                         <td>
@@ -78,15 +106,11 @@
                                 <a :href="`{{ url('admin/exams') }}/${e.id}/monitor`"
                                    class="text-xs px-3 py-1.5 border border-surface-200 dark:border-surface-700
                                           rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors
-                                          text-surface-600 dark:text-surface-300">
-                                    Monitor
-                                </a>
+                                          text-surface-600 dark:text-surface-300">Monitor</a>
                                 <button @click="openEdit(e)"
                                         class="text-xs px-3 py-1.5 border border-surface-200 dark:border-surface-700
                                                rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors
-                                               text-surface-600 dark:text-surface-300">
-                                    Edit
-                                </button>
+                                               text-surface-600 dark:text-surface-300">Edit</button>
                                 <button @click="changeStatus(e)"
                                         class="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
                                         :class="e.status === 'draft'
@@ -108,6 +132,93 @@
                 </tr>
             </tbody>
         </table>
+        </div>
+
+        {{-- Mobile detail sheet --}}
+        <template x-teleport="body">
+        <div x-show="detailSheet" x-cloak
+             @click.self="detailSheet = null"
+             class="fixed inset-0 z-50 flex items-end sm:hidden bg-black/40 backdrop-blur-sm"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="w-full bg-white dark:bg-surface-900 rounded-t-3xl shadow-xl"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="translate-y-full"
+                 x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="translate-y-0"
+                 x-transition:leave-end="translate-y-full">
+                <div class="flex justify-center pt-3 pb-1">
+                    <div class="w-10 h-1 bg-surface-200 dark:bg-surface-700 rounded-full"></div>
+                </div>
+                <div class="flex items-start gap-3 px-5 py-3 border-b border-surface-100 dark:border-surface-800">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-surface-800 dark:text-surface-100" x-text="detailSheet?.judul"></p>
+                        <p class="text-xs text-surface-400 mt-0.5" x-text="`${detailSheet?.jumlah_soal} soal · Total bobot ${detailSheet?.total_bobot}`"></p>
+                    </div>
+                    <button @click="detailSheet = null" class="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors flex-none">
+                        <svg class="w-5 h-5 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="px-5 py-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-400">Status</span>
+                        <span class="badge"
+                              :class="{ 'badge-slate': detailSheet?.status==='draft', 'badge-green': detailSheet?.status==='published', 'badge-red': detailSheet?.status==='closed' }"
+                              x-text="{ draft:'Draft', published:'Aktif', closed:'Ditutup' }[detailSheet?.status]"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-400">Token</span>
+                        <code class="font-mono bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 px-2 py-0.5 rounded text-xs"
+                              x-text="detailSheet?.token"></code>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-400">Target Kelas</span>
+                        <span class="text-sm font-semibold text-surface-700 dark:text-surface-200" x-text="`Kelas ${detailSheet?.target_kelas}`"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-400">Durasi</span>
+                        <span class="text-sm text-surface-600 dark:text-surface-300" x-text="`${detailSheet?.durasi_menit} menit`"></span>
+                    </div>
+                    <div class="flex items-start justify-between gap-3">
+                        <span class="text-sm text-surface-400">Jendela Waktu</span>
+                        <div class="text-right text-xs text-surface-500 dark:text-surface-400">
+                            <span x-text="detailSheet?.mulai_pada ? formatDt(detailSheet.mulai_pada) : '—'"></span>
+                            <span x-show="detailSheet?.mulai_pada"> s/d </span>
+                            <span x-text="detailSheet?.selesai_pada ? formatDt(detailSheet.selesai_pada) : '—'"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 pb-6 flex flex-col gap-2.5">
+                    <a :href="detailSheet ? `{{ url('admin/exams') }}/${detailSheet.id}/monitor` : '#'"
+                       class="w-full py-3 rounded-xl text-sm font-semibold text-center border border-surface-200 dark:border-surface-700
+                              text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
+                        Monitor
+                    </a>
+                    <div class="flex gap-2.5">
+                        <button @click="openEdit(detailSheet); detailSheet = null"
+                                class="flex-1 py-3 rounded-xl border border-surface-200 dark:border-surface-700 text-sm font-semibold
+                                       text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
+                            Edit
+                        </button>
+                        <button @click="changeStatus(detailSheet); detailSheet = null"
+                                class="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors"
+                                :class="detailSheet?.status === 'draft'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border border-surface-200 dark:border-surface-700'"
+                                x-text="detailSheet?.status === 'draft' ? 'Publikasi' : (detailSheet?.status === 'published' ? 'Tutup' : 'Buka Draft')">
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </template>
     </div>
 
     {{-- MODAL: Buat / Edit Ujian --}}

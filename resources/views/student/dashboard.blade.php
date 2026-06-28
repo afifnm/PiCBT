@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Siswa — PiCBT</title>
+    <title>Dashboard Siswa — {{ $appName }}</title>
     <link rel="shortcut icon" href="/logo.webp" type="image/webp">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -13,17 +13,22 @@
 <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
     <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <img src="/logo.webp" alt="PiCBT" class="w-8 h-8 rounded-lg object-contain">
-            <span class="font-bold text-slate-800">PiCBT</span>
+            <img src="/logo.webp" alt="{{ $appName }}" class="w-8 h-8 rounded-lg object-contain">
+            <span class="font-bold text-slate-800">{{ $appName }}</span>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
             <div class="text-right hidden sm:block">
                 <p class="text-sm font-semibold text-slate-800">{{ $student->nama }}</p>
                 <p class="text-xs text-slate-400">{{ $student->nis }} &bull; Kelas {{ $kelas }}</p>
             </div>
             <form method="POST" action="{{ route('student.logout') }}">
                 @csrf
-                <button class="text-sm text-slate-400 hover:text-red-500 transition">Keluar</button>
+                <button class="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    <span class="hidden sm:inline">Keluar</span>
+                </button>
             </form>
         </div>
     </div>
@@ -73,22 +78,22 @@
                                 {{-- Belum mulai --}}
                                 <form method="POST" action="{{ route('student.exam.start', $exam->id) }}">
                                     @csrf
-                                    <button class="flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
+                                    <button class="flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition min-h-[44px]">
                                         Mulai Ujian
                                     </button>
                                 </form>
                             @elseif ($attempt->status === 'berlangsung')
                                 {{-- Lanjutkan --}}
                                 <a href="{{ route('exam.take', $exam->id) }}"
-                                   class="flex-none px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition">
+                                   class="flex-none px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition min-h-[44px] flex items-center">
                                     Lanjutkan
                                 </a>
                             @elseif ($attempt->status === 'selesai')
-                                <span class="flex-none px-3 py-1.5 bg-green-100 text-green-700 text-xs font-semibold rounded-xl">
+                                <span class="flex-none px-3 py-2 bg-green-100 text-green-700 text-xs font-semibold rounded-xl">
                                     Selesai ✓
                                 </span>
                             @elseif ($attempt->status === 'dikeluarkan')
-                                <span class="flex-none px-3 py-1.5 bg-red-100 text-red-600 text-xs font-semibold rounded-xl">
+                                <span class="flex-none px-3 py-2 bg-red-100 text-red-600 text-xs font-semibold rounded-xl">
                                     Dikeluarkan
                                 </span>
                             @endif
@@ -113,50 +118,83 @@
                 Belum ada riwayat ujian.
             </div>
         @else
+            {{-- Mobile: card list; Desktop: table --}}
             <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead class="bg-slate-50 border-b border-slate-100">
-                        <tr>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs">Ujian</th>
-                            <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs">Tanggal</th>
-                            <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs">Skor</th>
-                            <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs">Status</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($history as $h)
-                            <tr class="hover:bg-slate-50 transition">
-                                <td class="px-4 py-3">
-                                    <p class="font-medium text-slate-800">{{ $h->exam->judul }}</p>
-                                    <p class="text-xs text-slate-400">{{ $h->exam->questionBank->subject->nama }}</p>
-                                </td>
-                                <td class="px-4 py-3 text-slate-500 text-xs">
-                                    {{ $h->selesai_at?->isoFormat('D MMM Y, HH:mm') ?? '—' }}
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    @if ($h->total_skor !== null)
-                                        <span class="font-bold text-slate-800">{{ number_format($h->total_skor, 1) }}</span>
-                                    @else
-                                        <span class="text-slate-400 text-xs">Dinilai...</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <span class="inline-block px-2 py-0.5 text-xs rounded-full font-medium
-                                        {{ $h->status === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' }}">
-                                        {{ $h->status === 'selesai' ? 'Selesai' : 'Dikeluarkan' }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <a href="{{ route('student.review', $h->id) }}"
-                                       class="text-xs px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 transition">
-                                        Review
-                                    </a>
-                                </td>
+                {{-- Desktop table --}}
+                <div class="hidden sm:block overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs">Ujian</th>
+                                <th class="text-left px-4 py-3 font-semibold text-slate-500 text-xs">Tanggal</th>
+                                <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs">Skor</th>
+                                <th class="text-right px-4 py-3 font-semibold text-slate-500 text-xs">Status</th>
+                                <th></th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach ($history as $h)
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="px-4 py-3">
+                                        <p class="font-medium text-slate-800">{{ $h->exam->judul }}</p>
+                                        <p class="text-xs text-slate-400">{{ $h->exam->questionBank->subject->nama }}</p>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                                        {{ $h->selesai_at?->isoFormat('D MMM Y, HH:mm') ?? '—' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        @if ($h->total_skor !== null)
+                                            <span class="font-bold text-slate-800">{{ number_format($h->total_skor, 1) }}</span>
+                                        @else
+                                            <span class="text-slate-400 text-xs">Dinilai...</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <span class="inline-block px-2 py-0.5 text-xs rounded-full font-medium
+                                            {{ $h->status === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' }}">
+                                            {{ $h->status === 'selesai' ? 'Selesai' : 'Dikeluarkan' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <a href="{{ route('student.review', $h->id) }}"
+                                           class="text-xs px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-500 transition">
+                                            Review
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Mobile card list --}}
+                <div class="sm:hidden divide-y divide-slate-100">
+                    @foreach ($history as $h)
+                        <div class="px-4 py-3 flex items-center gap-3">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium text-slate-800 truncate">{{ $h->exam->judul }}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">{{ $h->selesai_at?->isoFormat('D MMM Y') ?? '—' }}</p>
+                            </div>
+                            <div class="flex-none text-right space-y-1">
+                                @if ($h->total_skor !== null)
+                                    <p class="font-bold text-slate-800 text-sm">{{ number_format($h->total_skor, 1) }}</p>
+                                @else
+                                    <p class="text-slate-400 text-xs">Dinilai...</p>
+                                @endif
+                                <span class="inline-block px-2 py-0.5 text-xs rounded-full font-medium
+                                    {{ $h->status === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' }}">
+                                    {{ $h->status === 'selesai' ? 'Selesai' : 'Dikeluarkan' }}
+                                </span>
+                            </div>
+                            <a href="{{ route('student.review', $h->id) }}"
+                               class="flex-none p-2.5 border border-slate-200 rounded-xl hover:bg-slate-100 text-slate-500 transition">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         @endif
     </section>

@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ResultsExport;
 
@@ -219,12 +218,13 @@ class ResultController extends Controller
         return Excel::download(new ResultsExport($exam->id), $filename);
     }
 
-    // Export PDF
-    public function exportPdf(Request $request)
+    // Cetak rekap — halaman HTML standalone untuk print
+    public function printResults(Request $request)
     {
         $request->validate(['exam_id' => ['required', 'exists:exams,id']]);
 
-        $exam = Exam::with('questionBank.subject')->findOrFail($request->exam_id);
+        $exam = Exam::with(['questionBank.subject', 'examQuestions'])->findOrFail($request->exam_id);
+        $exam->total_bobot = $exam->examQuestions->sum('bobot_snapshot');
 
         $attempts = ExamAttempt::where('exam_id', $exam->id)
             ->where('is_void', false)
@@ -232,10 +232,6 @@ class ResultController extends Controller
             ->orderBy('total_skor', 'desc')
             ->get();
 
-        $pdf = Pdf::loadView('admin.results.pdf', compact('exam', 'attempts'))
-            ->setPaper('a4', 'portrait');
-
-        $filename = 'rekap_' . str($exam->judul)->slug() . '_' . now()->format('Ymd') . '.pdf';
-        return $pdf->download($filename);
+        return view('admin.results.print', compact('exam', 'attempts'));
     }
 }

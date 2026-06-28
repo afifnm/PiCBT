@@ -33,29 +33,58 @@ class StudentController extends Controller
             );
         }
 
-        $students = $query->orderBy('nama')->paginate(20);
+        $allStudents = $query->orderBy('nama')->get();
 
-        // Append kelas_sekarang accessor and filter by kelas if needed
-        $collection = $students->getCollection()->map(fn ($s) => array_merge($s->toArray(), [
+        $collection = $allStudents->map(fn ($s) => array_merge($s->toArray(), [
             'kelas_sekarang' => $s->kelas_sekarang,
+            'nama_kelas'     => $s->nama_kelas,
         ]));
 
         if ($request->filled('kelas')) {
             $collection = $collection->filter(
-                fn ($s) => ($s['kelas_sekarang'] ?? '') === $request->kelas
+                fn ($s) => ($s['nama_kelas'] ?? '') === $request->kelas
             )->values();
         }
 
+        $page = $request->input('page', 1);
+        $perPage = 20;
+        $total = $collection->count();
+        $pagedData = $collection->slice(($page - 1) * $perPage, $perPage)->values();
+
         return response()->json([
-            'data' => $collection->values(),
+            'data' => $pagedData,
             'meta' => [
-                'total'        => $students->total(),
-                'current_page' => $students->currentPage(),
-                'last_page'    => $students->lastPage(),
-                'from'         => $students->firstItem(),
-                'to'           => $students->lastItem(),
+                'total'        => $total,
+                'current_page' => (int) $page,
+                'last_page'    => ceil($total / $perPage),
+                'from'         => $total > 0 ? ($page - 1) * $perPage + 1 : null,
+                'to'           => $total > 0 ? min($page * $perPage, $total) : null,
             ],
         ]);
+    }
+
+    public function classesJson(): JsonResponse
+    {
+        $students = Student::select('id', 'tahun_masuk', 'jurusan', 'kelas_awal')->get();
+        $classes = [];
+        foreach ($students as $s) {
+            $nk = $s->nama_kelas;
+            if (!isset($classes[$nk])) {
+                $classes[$nk] = 0;
+            }
+            $classes[$nk]++;
+        }
+        
+        $result = [];
+        foreach ($classes as $nama => $count) {
+            $result[] = ['nama_kelas' => $nama, 'count' => $count];
+        }
+        
+        usort($result, function($a, $b) {
+            return strnatcmp($a['nama_kelas'], $b['nama_kelas']); // Use strnatcmp for better X, XI, XII sorting
+        });
+        
+        return response()->json(['data' => $result]);
     }
 
     public function store(Request $request): JsonResponse

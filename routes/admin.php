@@ -51,6 +51,7 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
     Route::prefix('students')->name('students.')->group(function () {
         Route::get('/',           [StudentController::class, 'index'])->name('index');
         Route::get('/json',       [StudentController::class, 'json'])->name('json');
+        Route::get('/classes-json', [StudentController::class, 'classesJson'])->name('classes-json');
         Route::post('/',          [StudentController::class, 'store'])->name('store');
         Route::put('/{student}',  [StudentController::class, 'update'])->name('update');
         Route::delete('/{student}', [StudentController::class, 'destroy'])->name('destroy');
@@ -121,7 +122,7 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
         Route::patch('/answer/{answer}/score',        [ResultController::class, 'overrideScore'])->name('override');
         Route::post('/answer/{answer}/ai-score',      [ResultController::class, 'aiScore'])->name('ai-score');
         Route::get('/export/excel',                   [ResultController::class, 'exportExcel'])->name('export.excel');
-        Route::get('/export/pdf',                     [ResultController::class, 'exportPdf'])->name('export.pdf');
+        Route::get('/print',                          [ResultController::class, 'printResults'])->name('print');
     });
 
     // ----------------------------------------------------------------
@@ -134,10 +135,5 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
     });
 
     // Logout
-    Route::post('/logout', function () {
-        auth()->logout();
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
-        return redirect('/');
-    })->name('logout');
+    Route::post('/logout', [App\Http\Controllers\Auth\AdminLoginController::class, 'logout'])->name('logout');
 });

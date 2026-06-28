@@ -10,12 +10,17 @@ use Illuminate\View\View;
 
 class AdminLoginController extends Controller
 {
+    public function redirectLogin(): RedirectResponse
+    {
+        return redirect()->route('login');
+    }
+
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::guard('web')->check()) {
             return redirect()->route('admin.dashboard');
         }
-        return view('auth.login-admin');
+        return view('auth.login');
     }
 
     public function login(Request $request): RedirectResponse
@@ -45,6 +50,6 @@ class AdminLoginController extends Controller
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('admin.login');
+        return redirect()->route('login');
     }
 }

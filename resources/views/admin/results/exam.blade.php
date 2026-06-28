@@ -38,13 +38,15 @@
                     </svg>
                     Excel
                 </a>
-                <a href="{{ route('admin.results.export.pdf', ['exam_id' => $exam->id]) }}"
-                   class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700
+                <a href="{{ route('admin.results.print', ['exam_id' => $exam->id]) }}"
+                   target="_blank"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700
                           text-white text-sm font-semibold rounded-xl transition">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/>
                     </svg>
-                    PDF
+                    Cetak
                 </a>
             </div>
         </div>
@@ -72,13 +74,13 @@
 
     {{-- Search + tabel --}}
     <div class="card overflow-hidden">
-        <div class="card-header">
+        <div class="card-header flex-wrap gap-3">
             <h3 class="font-semibold text-surface-800 dark:text-surface-100 text-sm">
                 Daftar Nilai Siswa
                 <span class="font-normal text-surface-400 ml-1" x-text="'(' + filtered.length + ' peserta)'"></span>
             </h3>
-            <div class="flex items-center gap-2">
-                <div class="relative w-56">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="relative flex-1 sm:w-56 sm:flex-none">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 pointer-events-none"
                          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
@@ -106,7 +108,116 @@
                 </button>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        {{-- Mobile: card list --}}
+        <div class="sm:hidden divide-y divide-surface-100 dark:divide-surface-800" x-data="{ detailSheet: null }">
+            <template x-for="(a, i) in filtered" :key="a.id">
+                <button @click="detailSheet = a"
+                        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-800/60 transition-colors text-left">
+                    <div class="w-9 h-9 rounded-xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center font-bold text-sm flex-none"
+                         :class="scoreColor(a.total_skor)"
+                         x-text="a.total_skor !== null ? a.total_skor : '—'"></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-surface-800 dark:text-surface-100 truncate" x-text="a.nama"></p>
+                        <p class="text-xs text-surface-400 mt-0.5" x-text="`${a.nis} · ${a.kelas}`"></p>
+                    </div>
+                    <span class="badge flex-none"
+                          :class="{ 'badge-green': a.status==='selesai', 'badge-red': a.status==='dikeluarkan', 'badge-amber': a.status==='berlangsung' }"
+                          x-text="{ selesai:'Selesai', dikeluarkan:'Dikeluarkan', berlangsung:'Jalan' }[a.status] || a.status"></span>
+                    <svg class="w-4 h-4 text-surface-300 dark:text-surface-600 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </template>
+            <div x-show="attempts.length === 0" class="py-16 text-center text-sm text-surface-400">Belum ada peserta untuk ujian ini.</div>
+            <div x-show="attempts.length > 0 && filtered.length === 0" class="py-10 text-center text-sm text-surface-400">Tidak ada peserta yang cocok.</div>
+
+            {{-- Mobile detail sheet --}}
+            <template x-teleport="body">
+            <div x-show="detailSheet" x-cloak
+                 @click.self="detailSheet = null"
+                 class="fixed inset-0 z-50 flex items-end sm:hidden bg-black/40 backdrop-blur-sm"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0">
+                <div class="w-full bg-white dark:bg-surface-900 rounded-t-3xl shadow-xl"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="translate-y-full"
+                     x-transition:enter-end="translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="translate-y-0"
+                     x-transition:leave-end="translate-y-full">
+                    <div class="flex justify-center pt-3 pb-1">
+                        <div class="w-10 h-1 bg-surface-200 dark:bg-surface-700 rounded-full"></div>
+                    </div>
+                    <div class="flex items-center gap-3 px-5 py-3 border-b border-surface-100 dark:border-surface-800">
+                        <div class="w-11 h-11 rounded-xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center font-bold text-lg flex-none"
+                             :class="scoreColor(detailSheet?.total_skor)"
+                             x-text="detailSheet?.total_skor !== null ? detailSheet?.total_skor : '—'"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-surface-800 dark:text-surface-100 truncate" x-text="detailSheet?.nama"></p>
+                            <p class="text-xs text-surface-400" x-text="detailSheet?.nis"></p>
+                        </div>
+                        <button @click="detailSheet = null" class="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors flex-none">
+                            <svg class="w-5 h-5 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="px-5 py-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-400">Kelas</span>
+                            <span class="text-sm font-semibold text-surface-700 dark:text-surface-200" x-text="detailSheet?.kelas"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-400">Skor</span>
+                            <span class="text-sm font-bold" :class="scoreColor(detailSheet?.total_skor)">
+                                <span x-text="detailSheet?.total_skor !== null ? detailSheet?.total_skor : '—'"></span>
+                                <span class="text-surface-400 font-normal">/{{ $stats['total_bobot'] }}</span>
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-400">Pelanggaran</span>
+                            <span class="text-sm font-semibold"
+                                  :class="detailSheet?.jumlah_pelanggaran > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-surface-400'"
+                                  x-text="detailSheet?.jumlah_pelanggaran"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-400">Koreksi</span>
+                            <template x-if="detailSheet?.perlu_koreksi > 0">
+                                <span class="badge-amber" x-text="detailSheet?.perlu_koreksi + ' soal'"></span>
+                            </template>
+                            <template x-if="detailSheet?.perlu_koreksi === 0">
+                                <span class="text-emerald-500 text-xs font-medium">✓ Selesai</span>
+                            </template>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-surface-400">Status</span>
+                            <span class="badge"
+                                  :class="{ 'badge-green': detailSheet?.status==='selesai', 'badge-red': detailSheet?.status==='dikeluarkan', 'badge-amber': detailSheet?.status==='berlangsung' }"
+                                  x-text="{ selesai:'Selesai', dikeluarkan:'Dikeluarkan', berlangsung:'Berlangsung' }[detailSheet?.status] || detailSheet?.status"></span>
+                        </div>
+                    </div>
+                    <div class="px-5 pb-6 flex gap-2.5">
+                        <a :href="detailSheet?.detail_url" target="_blank"
+                           class="flex-1 py-3 rounded-xl text-sm font-semibold text-center bg-primary-600 hover:bg-primary-700 text-white transition-colors">
+                            Lihat Detail
+                        </a>
+                        <button @click="resetOne(detailSheet); detailSheet = null" :disabled="detailSheet?.resetting"
+                                class="flex-1 py-3 rounded-xl border border-rose-200 dark:border-rose-800 text-sm font-semibold
+                                       text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50 transition-colors">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+            </template>
+        </div>
+
+        {{-- Desktop: table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="table-base">
                 <thead>
                     <tr>
@@ -134,9 +245,7 @@
                                 <span class="text-xs text-surface-400">/{{ $stats['total_bobot'] }}</span>
                             </td>
                             <td class="text-center">
-                                <span :class="a.jumlah_pelanggaran > 0
-                                        ? 'text-rose-600 dark:text-rose-400 font-semibold'
-                                        : 'text-surface-300 dark:text-surface-600'"
+                                <span :class="a.jumlah_pelanggaran > 0 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-surface-300 dark:text-surface-600'"
                                       x-text="a.jumlah_pelanggaran"></span>
                             </td>
                             <td class="text-center">
@@ -149,12 +258,8 @@
                             </td>
                             <td class="text-center">
                                 <span class="badge"
-                                      :class="{
-                                          'badge-green': a.status === 'selesai',
-                                          'badge-red':   a.status === 'dikeluarkan',
-                                          'badge-amber': a.status === 'berlangsung',
-                                      }"
-                                      x-text="{ selesai: 'Selesai', dikeluarkan: 'Dikeluarkan', berlangsung: 'Berlangsung' }[a.status] || a.status">
+                                      :class="{ 'badge-green': a.status==='selesai', 'badge-red': a.status==='dikeluarkan', 'badge-amber': a.status==='berlangsung' }"
+                                      x-text="{ selesai:'Selesai', dikeluarkan:'Dikeluarkan', berlangsung:'Berlangsung' }[a.status] || a.status">
                                 </span>
                             </td>
                             <td>
@@ -169,16 +274,14 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                                         </svg>
                                     </a>
-                                    <button :disabled="a.resetting"
-                                            @click="resetOne(a)"
+                                    <button :disabled="a.resetting" @click="resetOne(a)"
                                             class="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-colors
                                                    border border-rose-200 dark:border-rose-800 text-rose-500 dark:text-rose-400
                                                    hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50"
                                             title="Reset ujian siswa ini">
                                         <template x-if="!a.resetting">
                                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                             </svg>
                                         </template>
                                         <template x-if="a.resetting">
@@ -192,7 +295,6 @@
                             </td>
                         </tr>
                     </template>
-
                     <tr x-show="attempts.length === 0">
                         <td colspan="9" class="py-16 text-center">
                             <p class="text-sm text-surface-400">Belum ada peserta untuk ujian ini.</p>

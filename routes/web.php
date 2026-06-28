@@ -13,21 +13,25 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Root redirect
-Route::get('/', fn () => redirect()->route('admin.login'));
+Route::get('/', [AdminLoginController::class, 'redirectLogin']);
 
 // ----------------------------------------------------------------
-// Auth — Admin/Guru
+// Auth — Unified Login Portal
 // ----------------------------------------------------------------
-Route::get('/login',        [AdminLoginController::class, 'showLogin'])->name('admin.login');
-Route::post('/login',       [AdminLoginController::class, 'login'])->name('admin.login.post');
-Route::post('/logout',      [AdminLoginController::class, 'logout']);
+Route::get('/login', [AdminLoginController::class, 'showLogin'])->name('login');
 
-// ----------------------------------------------------------------
-// Auth — Siswa
-// ----------------------------------------------------------------
-Route::get('/siswa/login',  [StudentLoginController::class, 'showLogin'])->name('student.login');
-Route::post('/siswa/login', [StudentLoginController::class, 'login'])->name('student.login.post');
-Route::post('/siswa/logout',[StudentLoginController::class, 'logout'])->name('student.logout');
+// Admin/Guru login & logout
+Route::post('/login',  [AdminLoginController::class, 'login'])->name('admin.login.post');
+
+// Keep legacy names pointing to the same unified page
+Route::get('/admin/login', fn() => redirect()->route('login'))->name('admin.login');
+
+// Siswa login & logout
+Route::post('/siswa/login',  [StudentLoginController::class, 'login'])->name('student.login.post');
+Route::post('/siswa/logout', [StudentLoginController::class, 'logout'])->name('student.logout');
+
+// Keep legacy name pointing to the unified page
+Route::get('/siswa/login', fn() => redirect()->route('login'))->name('student.login');
 
 // ----------------------------------------------------------------
 // Siswa — dashboard + mulai ujian

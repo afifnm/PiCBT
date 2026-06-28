@@ -43,6 +43,14 @@ class Student extends Authenticatable
         };
     }
 
+    public function getNamaKelasAttribute(): string
+    {
+        $kelas = $this->kelas_sekarang;
+        return $this->jurusan ? "{$kelas} {$this->jurusan}" : $kelas;
+    }
+
+    protected $appends = ['kelas_sekarang', 'nama_kelas'];
+
     // -----------------------------------------------------------------------
     // Relations
     // -----------------------------------------------------------------------

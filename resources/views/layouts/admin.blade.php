@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Panel Admin') — PiCBT</title>
+    <title>@yield('title', 'Panel Admin') — {{ $appName }}</title>
 
     {{-- PWA --}}
     <link rel="manifest" href="/manifest.json">
@@ -12,7 +12,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="PiCBT">
+    <meta name="apple-mobile-web-app-title" content="{{ $appName }}">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
@@ -75,10 +75,10 @@
         <div class="flex items-center gap-3 px-5 pt-6 pb-5">
             <div class="w-9 h-9 rounded-2xl flex items-center justify-center flex-none shadow-md"
                  style="background: linear-gradient(135deg, #7c6af6 0%, #a78bfa 100%)">
-                <img src="/logo.webp" alt="PiCBT" class="w-6 h-6 object-contain brightness-0 invert">
+                <img src="/logo.webp" alt="{{ $appName }}" class="w-6 h-6 object-contain brightness-0 invert">
             </div>
             <div>
-                <span class="font-bold text-slate-800 dark:text-violet-100 text-base tracking-tight">PiCBT</span>
+                <span class="font-bold text-slate-800 dark:text-violet-100 text-base tracking-tight">{{ $appName }}</span>
                 <p class="text-[10px] text-slate-400 dark:text-violet-500 leading-none mt-0.5 font-medium tracking-wider uppercase">Admin Panel</p>
             </div>
         </div>
@@ -173,18 +173,19 @@
             {{-- Menu lainnya --}}
             @php
                 $navRest = [
-                    ['route' => 'admin.banks.index',    'label' => 'Bank Soal',   'icon' => 'bank'],
+                    ['route' => 'admin.banks.index',    'label' => 'Bank Soal',      'icon' => 'bank'],
                     ['route' => 'admin.banks.questions.guide', 'label' => 'Panduan Import', 'icon' => 'guide'],
-                    ['route' => 'admin.exams.index',    'label' => 'Ujian',       'icon' => 'exam'],
-                    ['route' => 'admin.results.index',  'label' => 'Rekap Nilai', 'icon' => 'results'],
-                    ['route' => 'admin.settings.index', 'label' => 'Pengaturan',  'icon' => 'settings'],
+                    ['route' => 'admin.exams.index',    'label' => 'Ujian',          'icon' => 'exam'],
+                    ['route' => 'admin.results.index',  'label' => 'Rekap Nilai',    'icon' => 'results'],
                 ];
             @endphp
             @foreach ($navRest as $item)
                 @php
+                    $isGuide = request()->routeIs('admin.banks.questions.guide');
                     if ($item['route'] === 'admin.banks.index') {
-                        $active = request()->routeIs('admin.banks.*')
-                               && !request()->routeIs('admin.banks.questions.guide');
+                        $active = request()->routeIs('admin.banks.*') && !$isGuide;
+                    } elseif ($item['route'] === 'admin.banks.questions.guide') {
+                        $active = $isGuide;
                     } else {
                         $active = request()->routeIs($item['route']);
                     }
@@ -202,6 +203,22 @@
 
         </nav>
 
+        {{-- Pengaturan footer (admin only) --}}
+        @if(auth()->user()->isAdmin())
+        @php $settingsActive = request()->routeIs('admin.settings.index'); @endphp
+        <div class="px-3 pt-1 pb-1 border-t border-slate-100 dark:border-violet-800/30">
+            <a href="{{ route('admin.settings.index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group
+                      {{ $settingsActive ? 'nav-item-active' : 'text-slate-500 dark:text-violet-400/50 hover:text-violet-700 dark:hover:text-violet-100 hover:bg-violet-50 dark:hover:bg-violet-900/30' }}">
+                <svg class="flex-none {{ $settingsActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-violet-500/60 group-hover:text-violet-500' }}"
+                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:16px;height:16px">
+                    {!! $icons['settings'] !!}
+                </svg>
+                <span class="{{ $settingsActive ? 'font-semibold' : 'font-medium' }}">Pengaturan</span>
+            </a>
+        </div>
+        @endif
+
         {{-- User info --}}
         <div class="px-3 py-4 border-t border-slate-100 dark:border-violet-800/30">
             <div class="flex items-center gap-3 px-2 py-2.5 rounded-2xl bg-slate-50 dark:bg-violet-900/20 border border-slate-200 dark:border-violet-800/30">
@@ -209,21 +226,10 @@
                      style="background: linear-gradient(135deg, #7c6af6, #a78bfa)">
                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                 </div>
-                <a href="{{ route('admin.profile.edit') }}" class="flex-1 min-w-0 group">
-                    <p class="text-sm font-semibold text-slate-700 dark:text-violet-100 truncate group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors">{{ auth()->user()->name }}</p>
-                    <p class="text-xs text-slate-400 dark:text-violet-500 capitalize font-medium">{{ auth()->user()->role }} · Edit profil</p>
-                </a>
-                <form method="POST" action="{{ route('admin.logout') }}" data-spa-ignore>
-                    @csrf
-                    <button type="submit"
-                            class="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
-                            title="Logout">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                        </svg>
-                    </button>
-                </form>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-violet-100 truncate">{{ auth()->user()->name }}</p>
+                    <p class="text-xs text-slate-400 dark:text-violet-500 capitalize font-medium">{{ auth()->user()->role }}</p>
+                </div>
             </div>
         </div>
     </aside>
@@ -286,13 +292,44 @@
                     </svg>
                     <span x-text="dark ? 'Terang' : 'Gelap'"></span>
                 </button>
+
+                {{-- User dropdown --}}
+                <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button @click="open = !open"
+                            class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-sm flex-none hover:opacity-80 transition-opacity"
+                            style="background: linear-gradient(135deg, #7c6af6, #a78bfa)"
+                            title="{{ auth()->user()->name }}">
+                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                    </button>
+                    <div x-show="open" x-cloak x-transition
+                         class="absolute right-0 mt-2 w-44 rounded-2xl bg-white dark:bg-surface-800 shadow-lg border border-surface-100 dark:border-surface-700 py-1.5 z-50">
+                        <a href="{{ route('admin.profile.edit') }}"
+                           class="flex items-center gap-2.5 px-4 py-2 text-sm text-surface-700 dark:text-surface-200 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 transition-colors">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            Edit Profil
+                        </a>
+                        <div class="my-1 border-t border-surface-100 dark:border-surface-700"></div>
+                        <form method="POST" action="{{ route('admin.logout') }}" data-spa-ignore>
+                            @csrf
+                            <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </header>
 
         {{-- Flash messages (swapped by SPA on navigation) --}}
         <div id="spa-flash" class="flex-none">
         @if (session('success') || session('error') || session('info'))
-        <div class="px-6 pt-4 space-y-2">
+        <div class="px-3 pt-3 sm:px-6 sm:pt-4 space-y-2">
             @if (session('success'))
                 <div x-data="{ show: true }" x-show="show"
                      x-init="setTimeout(() => show = false, 4500)"
@@ -364,9 +401,9 @@
         </div>
 
         <div id="spa-scripts" style="display:none">@stack('scripts')</div>
-        
+
         {{-- Content --}}
-        <main id="spa-main" class="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin">
+        <main id="spa-main" class="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 scrollbar-thin">
             <div id="spa-content" class="page-enter max-w-screen-xl mx-auto">
                 @yield('content')
             </div>

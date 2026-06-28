@@ -6,41 +6,114 @@
 <div x-data="studentPage()" x-init="init()">
 
     {{-- Toolbar --}}
-    <div class="flex flex-wrap gap-3 mb-5">
-        <div class="flex-1 min-w-48">
+    <div class="flex flex-wrap gap-3 mb-5 items-center">
+        <button x-show="viewMode === 'table'" @click="backToClasses()" class="btn-ghost" style="padding-left: 0.5rem">
+            <svg class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Kembali
+        </button>
+
+        <div x-show="viewMode === 'table'" class="flex-1 min-w-0">
             <input type="text" x-model="search" @input.debounce.400ms="fetchStudents()"
                    placeholder="Cari nama / NIS..."
                    class="input-base">
         </div>
-        <select x-model="filterKelas" @change="fetchStudents()"
+        
+        <select x-show="viewMode === 'table'" x-model="filterKelas" @change="fetchStudents()"
                 class="input-base !w-auto">
             <option value="">Semua Kelas</option>
-            <option value="X">Kelas X</option>
-            <option value="XI">Kelas XI</option>
-            <option value="XII">Kelas XII</option>
+            <template x-for="c in classesList" :key="c.nama_kelas">
+                <option :value="c.nama_kelas" x-text="c.nama_kelas"></option>
+            </template>
         </select>
-        <button @click="openCreate()" class="btn-primary">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            Tambah Siswa
-        </button>
-        <button @click="openImport()" class="btn-ghost">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            Import Excel
-        </button>
-        <a href="{{ route('admin.students.template') }}" class="btn-ghost">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Template
-        </a>
+
+        <div class="flex gap-2" :class="viewMode === 'cards' ? 'ml-auto' : ''">
+            <button @click="openCreate()" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tambah Siswa
+            </button>
+            <button @click="openImport()" class="btn-ghost">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                Import
+            </button>
+            <a href="{{ route('admin.students.template') }}" class="btn-ghost" title="Template Excel">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+            </a>
+        </div>
     </div>
 
-    {{-- Table --}}
-    <div class="card overflow-hidden">
+    {{-- Cards View --}}
+    <div x-show="viewMode === 'cards'" x-cloak>
+        <div x-show="loadingClasses" class="py-12 text-center">
+            <div class="flex items-center justify-center gap-2 text-surface-400">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                <span>Memuat kelas...</span>
+            </div>
+        </div>
+        <div x-show="!loadingClasses" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <template x-for="c in classesList" :key="c.nama_kelas">
+                <div @click="openClass(c.nama_kelas)" 
+                     class="card p-5 cursor-pointer border border-surface-200 dark:border-surface-800 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-md hover:shadow-primary-500/10 transition-all flex flex-col items-center justify-center text-center group">
+                    <div class="w-14 h-14 rounded-2xl bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="font-bold text-lg text-surface-800 dark:text-surface-100" x-text="c.nama_kelas"></h3>
+                    <p class="text-sm font-medium text-surface-500 mt-1"><span x-text="c.count"></span> Siswa</p>
+                </div>
+            </template>
+            <div x-show="classesList.length === 0" class="col-span-full py-12 text-center text-surface-500 bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700">
+                Belum ada data siswa / kelas.
+            </div>
+        </div>
+    </div>
+
+    {{-- Table View --}}
+    <div class="card overflow-hidden" x-show="viewMode === 'table'" x-cloak
+         x-data="{ detailSheet: null }">
+
+        {{-- Mobile: card list --}}
+        <div class="sm:hidden divide-y divide-surface-100 dark:divide-surface-800">
+            <template x-for="(s, i) in students" :key="s.id">
+                <button @click="detailSheet = s"
+                        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-800/60 transition-colors text-left">
+                    <div class="w-9 h-9 rounded-xl bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-sm flex-none">
+                        <span x-text="s.nama.charAt(0).toUpperCase()"></span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-surface-800 dark:text-surface-100 truncate" x-text="s.nama"></p>
+                        <p class="text-xs text-surface-400 mt-0.5" x-text="`${s.nis} · ${s.nama_kelas}`"></p>
+                    </div>
+                    <svg class="w-4 h-4 text-surface-300 dark:text-surface-600 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </template>
+            <div x-show="students.length === 0 && !loading" class="py-12 text-center">
+                <p class="text-sm text-surface-400">Tidak ada data siswa.</p>
+            </div>
+            <div x-show="loading" class="py-8 flex items-center justify-center gap-2 text-surface-400">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                <span class="text-sm">Memuat data...</span>
+            </div>
+        </div>
+
+        {{-- Desktop: table --}}
+        <div class="hidden sm:block overflow-x-auto">
         <table class="table-base">
             <thead>
                 <tr>
@@ -48,7 +121,6 @@
                     <th>NIS</th>
                     <th>Nama</th>
                     <th>Kelas</th>
-                    <th>Jurusan</th>
                     <th>Tahun Masuk</th>
                     <th></th>
                 </tr>
@@ -67,9 +139,8 @@
                                     'badge-green': s.kelas_sekarang === 'XII',
                                     'badge-slate': s.kelas_sekarang === 'Alumni',
                                   }"
-                                  x-text="s.kelas_sekarang"></span>
+                                  x-text="s.nama_kelas"></span>
                         </td>
-                        <td class="text-surface-500 dark:text-surface-400" x-text="s.jurusan || '—'"></td>
                         <td class="text-surface-500 dark:text-surface-400" x-text="s.tahun_masuk"></td>
                         <td>
                             <div class="flex items-center gap-2 justify-end">
@@ -88,7 +159,7 @@
                     </tr>
                 </template>
                 <tr x-show="students.length === 0 && !loading">
-                    <td colspan="7" class="py-12 text-center">
+                    <td colspan="6" class="py-12 text-center">
                         <svg class="w-8 h-8 text-surface-200 dark:text-surface-700 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
@@ -96,7 +167,7 @@
                     </td>
                 </tr>
                 <tr x-show="loading">
-                    <td colspan="7" class="py-8 text-center">
+                    <td colspan="6" class="py-8 text-center">
                         <div class="flex items-center justify-center gap-2 text-surface-400">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -108,6 +179,71 @@
                 </tr>
             </tbody>
         </table>
+        </div>
+
+        {{-- Mobile detail sheet --}}
+        <template x-teleport="body">
+        <div x-show="detailSheet" x-cloak
+             @click.self="detailSheet = null"
+             class="fixed inset-0 z-50 flex items-end sm:hidden bg-black/40 backdrop-blur-sm"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="w-full bg-white dark:bg-surface-900 rounded-t-3xl shadow-xl pb-safe"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="translate-y-full"
+                 x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="translate-y-0"
+                 x-transition:leave-end="translate-y-full">
+                {{-- Handle --}}
+                <div class="flex justify-center pt-3 pb-1">
+                    <div class="w-10 h-1 bg-surface-200 dark:bg-surface-700 rounded-full"></div>
+                </div>
+                {{-- Header --}}
+                <div class="flex items-center gap-3 px-5 py-3 border-b border-surface-100 dark:border-surface-800">
+                    <div class="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold flex-none"
+                         x-text="detailSheet?.nama?.charAt(0)?.toUpperCase()"></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-surface-800 dark:text-surface-100 truncate" x-text="detailSheet?.nama"></p>
+                        <p class="text-xs text-surface-400" x-text="detailSheet?.nis"></p>
+                    </div>
+                    <button @click="detailSheet = null" class="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+                        <svg class="w-5 h-5 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                {{-- Detail rows --}}
+                <div class="px-5 py-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-400">Kelas</span>
+                        <span class="text-sm font-semibold text-surface-700 dark:text-surface-200" x-text="detailSheet?.nama_kelas"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-400">Tahun Masuk</span>
+                        <span class="text-sm font-semibold text-surface-700 dark:text-surface-200" x-text="detailSheet?.tahun_masuk"></span>
+                    </div>
+                </div>
+                {{-- Actions --}}
+                <div class="px-5 pb-6 flex gap-3">
+                    <button @click="openEdit(detailSheet); detailSheet = null"
+                            class="flex-1 py-3 rounded-xl border border-surface-200 dark:border-surface-700 text-sm font-semibold
+                                   text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
+                        Edit
+                    </button>
+                    <button @click="confirmDelete(detailSheet); detailSheet = null"
+                            class="flex-1 py-3 rounded-xl border border-red-200 dark:border-red-900 text-sm font-semibold
+                                   text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+        </template>
 
         {{-- Pagination --}}
         <div class="px-5 py-3 border-t border-surface-100 dark:border-surface-800
@@ -304,10 +440,14 @@ function studentPage() {
     return {
         students: [],
         meta: {},
-        loading: true,
+        loading: false,
         search: '',
         filterKelas: '',
         currentPage: 1,
+
+        viewMode: 'cards',
+        classesList: [],
+        loadingClasses: true,
 
         showModal: false,
         modalTitle: '',
@@ -326,7 +466,30 @@ function studentPage() {
         showDelete: false,
         deleteTarget: null,
 
-        init() { this.fetchStudents(); },
+        init() { this.fetchClasses(); },
+
+        async fetchClasses() {
+            this.loadingClasses = true;
+            const res = await fetch(`{{ route('admin.students.classes-json') }}`, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+            });
+            const data = await res.json();
+            this.classesList = data.data;
+            this.loadingClasses = false;
+        },
+
+        openClass(nama_kelas) {
+            this.filterKelas = nama_kelas;
+            this.viewMode = 'table';
+            this.fetchStudents(1);
+        },
+
+        backToClasses() {
+            this.viewMode = 'cards';
+            this.filterKelas = '';
+            this.search = '';
+            this.fetchClasses();
+        },
 
         async fetchStudents(page = 1) {
             this.loading = true;
@@ -371,7 +534,14 @@ function studentPage() {
                 body: JSON.stringify(this.form),
             });
             const data = await res.json();
-            if (res.ok) { this.closeModal(); this.fetchStudents(this.currentPage); }
+            if (res.ok) { 
+                this.closeModal(); 
+                if (this.viewMode === 'table') {
+                    this.fetchStudents(this.currentPage); 
+                } else {
+                    this.fetchClasses();
+                }
+            }
             else if (res.status === 422) { this.errors = data.errors ?? {}; this.formError = data.message ?? ''; }
             else { this.formError = data.message ?? 'Terjadi kesalahan.'; }
             this.submitting = false;
@@ -388,7 +558,15 @@ function studentPage() {
             fd.append('_token', csrf());
             const res = await fetch(`{{ route('admin.students.import') }}`, { method: 'POST', body: fd });
             const data = await res.json();
-            if (res.ok) { this.showImport = false; this.fetchStudents(); alert(`Import selesai: ${data.success} berhasil, ${data.failed} gagal.`); }
+            if (res.ok) { 
+                this.showImport = false; 
+                if (this.viewMode === 'table') {
+                    this.fetchStudents();
+                } else {
+                    this.fetchClasses();
+                }
+                alert(`Import selesai: ${data.success} berhasil, ${data.failed} gagal.`); 
+            }
             else { this.importError = data.message ?? 'Import gagal.'; }
             this.importing = false;
         },
@@ -400,7 +578,14 @@ function studentPage() {
                 method: 'DELETE',
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
             });
-            if (res.ok) { this.showDelete = false; this.fetchStudents(this.currentPage); }
+            if (res.ok) { 
+                this.showDelete = false; 
+                if (this.viewMode === 'table') {
+                    this.fetchStudents(this.currentPage); 
+                } else {
+                    this.fetchClasses();
+                }
+            }
         },
     };
 }

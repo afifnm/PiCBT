@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\AttemptAnswer;
-use App\Models\ExamAttempt;
 use App\Services\GeminiScoringService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -37,14 +36,6 @@ class ScoreEssayAnswerJob implements ShouldQueue
             }
 
             $service->scoreAnswer($answer);
-
-            // Recalculate total_skor on the attempt after each answer is scored
-            $attempt = ExamAttempt::lockForUpdate()->find($answer->exam_attempt_id);
-            if ($attempt) {
-                $attempt->total_skor = AttemptAnswer::where('exam_attempt_id', $attempt->id)
-                    ->sum('skor');
-                $attempt->save();
-            }
         });
     }
 

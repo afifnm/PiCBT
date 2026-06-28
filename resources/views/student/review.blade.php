@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review — {{ $attempt->exam->judul }} — PiCBT</title>
+    <title>Review — {{ $attempt->exam->judul }} — {{ $appName }}</title>
     <link rel="shortcut icon" href="/logo.webp" type="image/webp">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -181,7 +181,7 @@
 
     <div class="pb-8 text-center">
         <a href="{{ route('student.dashboard') }}"
-           class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition">
+           class="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition min-h-[44px]">
             ← Kembali ke Dashboard
         </a>
     </div>

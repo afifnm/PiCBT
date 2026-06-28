@@ -12,7 +12,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $attempt->exam->judul }} — PiCBT</title>
+    <title>{{ $attempt->exam->judul }} — {{ $appName }}</title>
     <link rel="shortcut icon" href="/logo.webp" type="image/webp">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -190,10 +190,10 @@
         </header>
 
         {{-- ---- BODY ---- --}}
-        <div class="flex-1 overflow-hidden flex">
+        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
 
             {{-- Soal area --}}
-            <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6" :class="showMobileNav ? 'pb-40' : 'pb-4'">
                 @foreach ($questions as $index => $examQuestion)
                     @php
                         $q      = $examQuestion->question;
@@ -262,9 +262,9 @@
                             <div>
                                 <textarea
                                     name="q_{{ $q->id }}"
-                                    rows="8"
+                                    rows="6"
                                     placeholder="Tulis jawaban Anda di sini..."
-                                    class="w-full p-4 rounded-2xl border-2 border-surface-200 dark:border-surface-700 bg-white/70 dark:bg-surface-900/50 focus:border-primary-400 focus:ring-2 focus:ring-primary-400/30 focus:outline-none resize-none text-surface-800 dark:text-surface-100 text-sm transition-all duration-200"
+                                    class="w-full p-4 rounded-2xl border-2 border-surface-200 dark:border-surface-700 bg-white/70 dark:bg-surface-900/50 focus:border-primary-400 focus:ring-2 focus:ring-primary-400/30 focus:outline-none resize-y text-surface-800 dark:text-surface-100 text-sm transition-all duration-200 min-h-[140px]"
                                     @input.debounce.800ms="saveAnswer({{ $q->id }}, 'esai', $event.target.value)"
                                     >{{ $ans?->jawaban_esai }}</textarea>
                                 <p class="text-xs text-surface-400 dark:text-surface-500 mt-1.5 flex items-center gap-1">
@@ -302,7 +302,7 @@
                 @endforeach
             </main>
 
-            {{-- ---- SIDEBAR navigasi nomor soal ---- --}}
+            {{-- ---- SIDEBAR navigasi nomor soal (Desktop) ---- --}}
             <aside class="flex-none w-52 hidden lg:flex flex-col border-l border-white/40 dark:border-surface-800/60 bg-white/60 dark:bg-surface-900/50 backdrop-blur-xl p-4 overflow-y-auto scrollbar-thin">
                 <p class="text-xs font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-wider mb-3">Nomor Soal</p>
                 <div class="grid grid-cols-4 gap-2">
@@ -332,6 +332,53 @@
                     </div>
                 </div>
             </aside>
+        </div>
+
+        {{-- ---- MOBILE: Floating nav button + panel ---- --}}
+        <div class="lg:hidden">
+            {{-- Toggle button --}}
+            <button @click="showMobileNav = !showMobileNav"
+                    class="fixed bottom-5 right-5 z-30 w-12 h-12 rounded-2xl shadow-soft-lg
+                           bg-gradient-to-br from-primary-500 to-indigo-600 text-white
+                           flex items-center justify-center transition-transform"
+                    :class="showMobileNav ? 'rotate-45' : ''">
+                <svg x-show="!showMobileNav" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
+                </svg>
+                <svg x-show="showMobileNav" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            {{-- Slide-up panel --}}
+            <div x-show="showMobileNav" x-cloak
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 translate-y-4"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-4"
+                 class="fixed bottom-0 left-0 right-0 z-20 bg-white/95 dark:bg-surface-900/95 backdrop-blur-xl
+                        border-t border-surface-200/60 dark:border-surface-700/60 rounded-t-3xl shadow-soft-lg p-4 pb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-wider">Navigasi Soal</p>
+                    <div class="flex gap-3 text-xs text-surface-400">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gradient-to-br from-emerald-400 to-green-500 inline-block"></span>Terjawab</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gradient-to-br from-amber-300 to-orange-400 inline-block"></span>Ragu</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto">
+                    @foreach ($questions as $index => $examQuestion)
+                        @php $qId = $examQuestion->question_id; @endphp
+                        <button
+                            @click="goTo({{ $index }}); showMobileNav = false"
+                            :class="navBtnClass({{ $index }}, {{ $qId }})"
+                            class="exam-nav-btn h-9 w-full rounded-xl text-xs font-semibold shadow-soft">
+                            {{ $index + 1 }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
         </div>
     </div>
 
@@ -389,6 +436,7 @@ function examApp(attemptId, initialSeconds, totalQuestions) {
         showWarning: false,
         warningText: '',
         showConfirmSubmit: false,
+        showMobileNav: false,
         doneIcon: '✅',
         doneTitle: 'Ujian Selesai',
         doneMessage: 'Jawaban Anda telah dikumpulkan.',
