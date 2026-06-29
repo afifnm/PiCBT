@@ -447,6 +447,8 @@ function examApp(attemptId, initialSeconds, totalQuestions) {
         _savingQueue: {},       // questionId → in-flight flag
         _submitted: false,
         _fullscreenWarningActive: false,
+        _sirenCtx: null,
+        _sirenNodes: null,
 
         // --- Init ---
         init() {
@@ -645,6 +647,73 @@ function examApp(attemptId, initialSeconds, totalQuestions) {
             return map[jenis] ?? 'Tindakan tidak diizinkan selama ujian!';
         },
 
+        // --- Siren sound ---
+        _startSiren() {
+            try {
+                if (this._sirenCtx) this._stopSiren();
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this._sirenCtx = ctx;
+
+                const gainNode = ctx.createGain();
+                gainNode.gain.setValueAtTime(1.2, ctx.currentTime);
+                gainNode.connect(ctx.destination);
+
+                const lfo = ctx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.setValueAtTime(2.5, ctx.currentTime);
+
+                const lfoGain = ctx.createGain();
+                lfoGain.gain.setValueAtTime(200, ctx.currentTime);
+                lfo.connect(lfoGain);
+
+                const osc1 = ctx.createOscillator();
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(880, ctx.currentTime);
+                lfoGain.connect(osc1.frequency);
+
+                const osc2 = ctx.createOscillator();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(660, ctx.currentTime);
+                lfoGain.connect(osc2.frequency);
+
+                const distortion = ctx.createWaveShaper();
+                const curve = new Float32Array(256);
+                for (let i = 0; i < 256; i++) {
+                    const x = (i * 2) / 256 - 1;
+                    curve[i] = (Math.PI + 400) * x / (Math.PI + 400 * Math.abs(x));
+                }
+                distortion.curve = curve;
+
+                osc1.connect(distortion);
+                osc2.connect(distortion);
+                distortion.connect(gainNode);
+
+                lfo.start();
+                osc1.start();
+                osc2.start();
+
+                this._sirenNodes = { ctx, lfo, osc1, osc2, gainNode };
+            } catch (e) {
+                // AudioContext not available — fail silently
+            }
+        },
+
+        _stopSiren() {
+            try {
+                if (this._sirenNodes) {
+                    const { lfo, osc1, osc2 } = this._sirenNodes;
+                    lfo.stop();
+                    osc1.stop();
+                    osc2.stop();
+                    this._sirenNodes = null;
+                }
+                if (this._sirenCtx) {
+                    this._sirenCtx.close();
+                    this._sirenCtx = null;
+                }
+            } catch (e) { /* ignore */ }
+        },
+
         // --- Warning overlay ---
         _showWarning(text) {
             // Mode senyap: pelanggaran tetap direkam ke server (lihat logCheat),
@@ -652,9 +721,11 @@ function examApp(attemptId, initialSeconds, totalQuestions) {
             if (!this.tampilkanPeringatan) return;
             this.warningText = text;
             this.showWarning = true;
+            this._startSiren();
         },
 
         dismissWarning() {
+            this._stopSiren();
             this.showWarning = false;
             // Try to re-enter fullscreen if not already
             if (!(document.fullscreenElement || document.webkitFullscreenElement)) {
@@ -756,6 +827,7 @@ function examApp(attemptId, initialSeconds, totalQuestions) {
         _endExam(status, icon, title, message) {
             clearInterval(this._timerInterval);
             clearInterval(this._heartbeatInterval);
+            this._stopSiren();
 
             // Exit fullscreen
             (document.exitFullscreen?.() ?? document.webkitExitFullscreen?.())?.catch(() => {});
