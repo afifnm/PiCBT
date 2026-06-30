@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GenerateAiQuestionsRequest;
 use App\Models\Question;
 use App\Models\QuestionBank;
 use App\Models\QuestionOption;
 use App\Models\Subject;
+use App\Services\GeminiQuestionGeneratorService;
 use App\Services\QuestionTxtParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class QuestionBankController extends Controller
@@ -141,6 +144,58 @@ class QuestionBankController extends Controller
     // -----------------------------------------------------------------------
     // Import soal dari TXT
     // -----------------------------------------------------------------------
+    public function unlockAiGenerator(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'passcode' => ['required', 'string', 'size:4', 'regex:/^\d{4}$/'],
+        ], [
+            'passcode.required' => 'Passcode wajib diisi.',
+            'passcode.size' => 'Passcode harus terdiri dari 4 digit.',
+            'passcode.regex' => 'Passcode harus terdiri dari 4 digit angka.',
+        ]);
+
+        $expectedPasscode = (string) config('services.gemini.question_passcode', '0806');
+
+        if (! hash_equals($expectedPasscode, $data['passcode'])) {
+            return response()->json(['message' => 'Passcode tidak sesuai.'], 422);
+        }
+
+        $request->session()->put('ai_question_generator_unlocked', true);
+
+        return response()->json(['unlocked' => true]);
+    }
+
+    public function generateAiQuestions(
+        GenerateAiQuestionsRequest $request,
+        QuestionBank $bank,
+        GeminiQuestionGeneratorService $generator,
+    ): JsonResponse
+    {
+        if (! (bool) $request->session()->get('ai_question_generator_unlocked', false)) {
+            return response()->json([
+                'message' => 'Masukkan passcode untuk membuka fitur AI.',
+            ], 403);
+        }
+
+        try {
+            $result = $generator->generate($bank->loadMissing('subject'), $request->validated());
+
+            return response()->json($result);
+        } catch (\RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        } catch (\Throwable $exception) {
+            Log::error('AI question generation failed', [
+                'bank_id' => $bank->id,
+                'user_id' => auth()->id(),
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat membuat soal dengan AI. Silakan coba lagi.',
+            ], 500);
+        }
+    }
+
     public function importQuestions(Request $request, QuestionBank $bank, QuestionTxtParser $parser): JsonResponse
     {
         $request->validate([

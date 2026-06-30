@@ -22,6 +22,12 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL'),
+        'question_passcode' => env('AI_QUESTION_PASSCODE', '0806'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

@@ -11,6 +11,185 @@
 
 @section('content')
 <div x-data="questionPage({{ $bank->id }})">
+    {{-- MODAL: Passcode generator AI --}}
+    <template x-teleport="#modal-root">
+        <div x-show="showAiPasscode" x-cloak
+             @click.self="!aiVerifyingPasscode && (showAiPasscode = false)"
+             class="modal-overlay">
+            <div @click.stop
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="modal-panel max-w-sm">
+                <div class="modal-header">
+                    <div>
+                        <h3>Buka Generator AI</h3>
+                        <p class="text-xs font-normal text-surface-400 dark:text-surface-500 mt-0.5">
+                            Masukkan passcode untuk melanjutkan.
+                        </p>
+                    </div>
+                    <button @click="showAiPasscode = false" :disabled="aiVerifyingPasscode"
+                            class="modal-close disabled:opacity-40">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="verifyAiPasscode()" class="modal-body space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center mx-auto">
+                        <svg class="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5 text-center">
+                            Passcode 4 Digit
+                        </label>
+                        <input x-ref="aiPasscodeInput" type="password" x-model="aiPasscode"
+                               inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                               class="input-base text-center text-2xl tracking-[0.5em] font-mono"
+                               placeholder="••••">
+                    </div>
+
+                    <div x-show="aiPasscodeError"
+                         class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-center
+                                dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                         x-text="aiPasscodeError"></div>
+
+                    <button type="submit" :disabled="aiVerifyingPasscode || aiPasscode.length !== 4"
+                            class="btn-primary w-full justify-center disabled:opacity-50">
+                        <svg x-show="aiVerifyingPasscode" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                        </svg>
+                        <span x-text="aiVerifyingPasscode ? 'Memeriksa...' : 'Buka Fitur AI'"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    {{-- MODAL: Generator soal AI --}}
+    <template x-teleport="#modal-root">
+        <div x-show="showAiGenerator" x-cloak
+             @click.self="!aiGenerating && (showAiGenerator = false)"
+             class="modal-overlay modal-top">
+            <div @click.stop
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="modal-panel max-w-3xl my-8">
+                <div class="modal-header sticky top-0 bg-white dark:bg-surface-900 rounded-t-2xl z-10">
+                    <div>
+                        <h3>Buat Soal dengan AI</h3>
+                        <p class="text-xs font-normal text-surface-400 dark:text-surface-500 mt-0.5">
+                            {{ $bank->subject->nama }} &bull; hasil divalidasi dengan format import PiCBT
+                        </p>
+                    </div>
+                    <button @click="showAiGenerator = false" :disabled="aiGenerating" class="modal-close disabled:opacity-40">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="modal-body space-y-5">
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800
+                                dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                        AI dapat membuat kekeliruan. Periksa pertanyaan, kunci PG, dan rubrik esai sebelum mengimpor.
+                    </div>
+
+                    <form @submit.prevent="generateAiQuestions()" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
+                                Topik Materi <span class="text-red-500">*</span>
+                            </label>
+                            <textarea x-model="aiForm.topik" rows="3" class="input-base resize-y"
+                                      placeholder="Contoh: Persamaan kuadrat, akar-akar persamaan, dan diskriminan"></textarea>
+                            <p x-show="aiErrors.topik" x-text="aiErrors.topik" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">Jumlah Soal PG</label>
+                                <input type="number" x-model.number="aiForm.jumlah_pg" min="0" max="50" class="input-base">
+                                <p x-show="aiErrors.jumlah_pg" x-text="aiErrors.jumlah_pg" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">Jumlah Soal Esai</label>
+                                <input type="number" x-model.number="aiForm.jumlah_esai" min="0" max="20" class="input-base">
+                                <p x-show="aiErrors.jumlah_esai" x-text="aiErrors.jumlah_esai" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
+                                    Kelas <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" x-model="aiForm.kelas" maxlength="100" class="input-base"
+                                       placeholder="Contoh: X SMK / Fase E">
+                                <p x-show="aiErrors.kelas" x-text="aiErrors.kelas" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-surface-500 dark:text-surface-400 mb-1.5">
+                                    Tingkat Kesulitan <span class="text-red-500">*</span>
+                                </label>
+                                <select x-model="aiForm.tingkat_kesulitan" class="input-base">
+                                    <option value="mudah">Mudah</option>
+                                    <option value="sedang">Sedang</option>
+                                    <option value="sulit">Sulit</option>
+                                    <option value="campuran">Campuran (30% mudah, 50% sedang, 20% sulit)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div x-show="aiError"
+                             class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700
+                                    dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                             x-text="aiError"></div>
+
+                        <button type="submit" :disabled="aiGenerating" class="btn-primary w-full justify-center disabled:opacity-50">
+                            <svg x-show="aiGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                            <span x-text="aiGenerating ? 'AI sedang menyusun soal...' : 'Generate Draft Soal'"></span>
+                        </button>
+                    </form>
+
+                    <div x-show="aiText" class="space-y-3 border-t border-surface-100 dark:border-surface-800 pt-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p class="text-sm font-semibold text-surface-700 dark:text-surface-200">Preview format import</p>
+                                <p class="text-xs text-emerald-600 dark:text-emerald-400">
+                                    Valid: <span x-text="aiSummary.jumlah_pg"></span> PG +
+                                    <span x-text="aiSummary.jumlah_esai"></span> esai
+                                </p>
+                            </div>
+                            <button type="button" @click="copyAiText()" class="btn-ghost text-xs">
+                                <span x-text="aiCopied ? 'Tersalin' : 'Salin Teks'"></span>
+                            </button>
+                        </div>
+                        <textarea x-model="aiText" rows="15" class="input-base resize-y font-mono text-xs leading-relaxed"></textarea>
+
+                        <div x-show="aiImportError"
+                             class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700
+                                    dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                             x-text="aiImportError"></div>
+
+                        <div class="flex flex-col-reverse sm:flex-row gap-3">
+                            <button type="button" @click="showAiGenerator = false" class="btn-ghost flex-1 justify-center">Tutup</button>
+                            <button type="button" @click="importAiQuestions()" :disabled="aiImporting"
+                                    class="btn-primary flex-1 justify-center disabled:opacity-50">
+                                <span x-text="aiImporting ? 'Mengimpor...' : 'Import ke Bank Soal'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 
     {{-- Header info + tombol --}}
     <div class="flex flex-wrap items-center gap-3 mb-5">
@@ -30,6 +209,14 @@
             Hapus Semua Soal
         </button>
         @endif
+        <button @click="openAiGenerator()"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600
+                       text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-soft">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591ZM18.259 8.715 18 9.5l-.259-.785a3.4 3.4 0 0 0-2.456-2.456L14.5 6l.785-.259a3.4 3.4 0 0 0 2.456-2.456L18 2.5l.259.785a3.4 3.4 0 0 0 2.456 2.456L21.5 6l-.785.259a3.4 3.4 0 0 0-2.456 2.456Z"/>
+            </svg>
+            Buat Soal dengan AI
+        </button>
         <button @click="openImport()" class="btn-ghost">
             ⬆ Import TXT
         </button>
@@ -441,6 +628,10 @@
         showDelete: false, deleteId: null, deleteLabel: '',
         showDeleteAll: false, deletingAll: false,
         showImport: false, importFile: null, importText: '', importResult: null, importError: '', importing: false,
+        showAiPasscode: false, aiPasscode: '', aiPasscodeError: '', aiVerifyingPasscode: false, aiUnlocked: false,
+        showAiGenerator: false, aiGenerating: false, aiImporting: false,
+        aiForm: { topik: '', jumlah_pg: 10, jumlah_esai: 0, kelas: '', tingkat_kesulitan: 'campuran' },
+        aiErrors: {}, aiError: '', aiText: '', aiSummary: {}, aiImportError: '', aiCopied: false,
 
         openCreate(tipe) {
             this.editMode = false; this.editId = null;
@@ -528,6 +719,119 @@
                 this.importError = data.message ?? 'Terjadi kesalahan saat mengimpor.';
             }
             this.importing = false;
+        },
+
+        openAiGenerator() {
+            if (!this.aiUnlocked) {
+                this.aiPasscode = ''; this.aiPasscodeError = ''; this.showAiPasscode = true;
+                this.$nextTick(() => this.$refs.aiPasscodeInput?.focus());
+                return;
+            }
+
+            this.resetAndShowAiGenerator();
+        },
+
+        async verifyAiPasscode() {
+            this.aiVerifyingPasscode = true; this.aiPasscodeError = '';
+
+            try {
+                const res = await fetch(`{{ route('admin.banks.questions.ai-unlock') }}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify({ passcode: this.aiPasscode }),
+                });
+                const data = await res.json();
+
+                if (res.ok && data.unlocked) {
+                    this.aiUnlocked = true;
+                    this.showAiPasscode = false;
+                    this.resetAndShowAiGenerator();
+                } else {
+                    this.aiPasscode = '';
+                    this.aiPasscodeError = data.errors?.passcode?.[0] ?? data.message ?? 'Passcode tidak sesuai.';
+                    this.$nextTick(() => this.$refs.aiPasscodeInput?.focus());
+                }
+            } catch (error) {
+                this.aiPasscodeError = 'Koneksi terputus saat memeriksa passcode.';
+            } finally {
+                this.aiVerifyingPasscode = false;
+            }
+        },
+
+        resetAndShowAiGenerator() {
+            this.aiForm = { topik: '', jumlah_pg: 10, jumlah_esai: 0, kelas: '', tingkat_kesulitan: 'campuran' };
+            this.aiErrors = {}; this.aiError = ''; this.aiText = ''; this.aiSummary = {};
+            this.aiImportError = ''; this.aiCopied = false; this.showAiGenerator = true;
+        },
+
+        async generateAiQuestions() {
+            this.aiGenerating = true; this.aiErrors = {}; this.aiError = '';
+            this.aiText = ''; this.aiSummary = {}; this.aiImportError = '';
+
+            try {
+                const res = await fetch(`{{ url('admin/banks') }}/${this.bankId}/questions/ai-generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify(this.aiForm),
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    this.aiText = data.teks;
+                    this.aiSummary = data;
+                } else if (res.status === 422 && data.errors) {
+                    Object.entries(data.errors).forEach(([key, messages]) => this.aiErrors[key] = messages[0]);
+                    this.aiError = data.message ?? 'Periksa kembali parameter soal.';
+                } else if (res.status === 403) {
+                    this.aiUnlocked = false;
+                    this.showAiGenerator = false;
+                    this.aiPasscodeError = data.message ?? 'Masukkan kembali passcode.';
+                    this.showAiPasscode = true;
+                } else {
+                    this.aiError = data.message ?? 'Gagal membuat soal dengan AI.';
+                }
+            } catch (error) {
+                this.aiError = 'Koneksi terputus saat membuat soal. Silakan coba lagi.';
+            } finally {
+                this.aiGenerating = false;
+            }
+        },
+
+        async importAiQuestions() {
+            this.aiImporting = true; this.aiImportError = '';
+            const fd = new FormData();
+            fd.append('teks', this.aiText);
+
+            try {
+                const res = await fetch(`{{ url('admin/banks') }}/${this.bankId}/questions/import`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: fd,
+                });
+                const data = await res.json();
+
+                if (res.ok && data.imported > 0 && data.skipped === 0) {
+                    window.location.reload();
+                } else if (res.ok) {
+                    this.aiImportError = `${data.imported} soal diimpor, ${data.skipped} dilewati. ${data.errors?.join(' ') ?? ''}`;
+                } else {
+                    this.aiImportError = data.message ?? 'Draft tidak dapat diimpor.';
+                }
+            } catch (error) {
+                this.aiImportError = 'Koneksi terputus saat mengimpor soal.';
+            } finally {
+                this.aiImporting = false;
+            }
+        },
+
+        async copyAiText() {
+            try {
+                await navigator.clipboard.writeText(this.aiText);
+                this.aiCopied = true;
+                setTimeout(() => this.aiCopied = false, 1500);
+            } catch (error) {
+                this.aiImportError = 'Browser tidak mengizinkan penyalinan otomatis.';
+            }
         },
 
         confirmDelete(id, label) { this.deleteId = id; this.deleteLabel = label; this.showDelete = true; },

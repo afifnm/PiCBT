@@ -63,7 +63,7 @@ class SettingController extends Controller
     {
         try {
             $encrypted = Setting::where('key', 'gemini_api_key')->value('value');
-            $apiKey    = $encrypted ? Crypt::decryptString($encrypted) : config('gemini.api_key');
+            $apiKey    = $encrypted ? Crypt::decryptString($encrypted) : config('services.gemini.api_key');
 
             if (! $apiKey) {
                 return response()->json(['ok' => false, 'message' => 'API key belum dikonfigurasi.']);

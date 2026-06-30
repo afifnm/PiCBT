@@ -83,6 +83,12 @@ Route::middleware(['auth', 'active.user'])->prefix('admin')->name('admin.')->gro
         Route::get('/questions/import/panduan',       [QuestionBankController::class, 'importGuide'])->name('questions.guide');
         Route::get('/{bank}/questions',               [QuestionBankController::class, 'questions'])->name('questions');
         Route::post('/{bank}/questions',              [QuestionBankController::class, 'storeQuestion'])->name('questions.store');
+        Route::post('/questions/ai/unlock',            [QuestionBankController::class, 'unlockAiGenerator'])
+            ->middleware('throttle:ai_passcode')
+            ->name('questions.ai-unlock');
+        Route::post('/{bank}/questions/ai-generate',  [QuestionBankController::class, 'generateAiQuestions'])
+            ->middleware('throttle:ai_question_generation')
+            ->name('questions.ai-generate');
         Route::post('/{bank}/questions/import',       [QuestionBankController::class, 'importQuestions'])->name('questions.import');
         Route::delete('/{bank}/questions',            [QuestionBankController::class, 'destroyAllQuestions'])->name('questions.destroyAll');
     });

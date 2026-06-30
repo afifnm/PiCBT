@@ -49,7 +49,7 @@
                     </div>
                     <div>
                         <h3 class="font-semibold text-surface-800 dark:text-surface-100">Google Gemini API</h3>
-                        <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5">Untuk penilaian otomatis soal esai.</p>
+                        <p class="text-xs text-surface-400 dark:text-surface-500 mt-0.5">Untuk pembuatan soal dan penilaian otomatis esai.</p>
                     </div>
                 </div>
                 <button type="button" @click="testGemini()" :disabled="testing"

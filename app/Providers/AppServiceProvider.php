@@ -15,7 +15,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        View::share('appName', Setting::get('app_name', 'PiCBT'));
+        // Unit test harus tetap dapat boot tanpa koneksi database eksternal.
+        $appName = app()->runningUnitTests()
+            ? config('app.name', 'PiCBT')
+            : Setting::get('app_name', 'PiCBT');
+
+        View::share('appName', $appName);
 
         RateLimiter::for('exam_autosave', fn (Request $request) =>
             Limit::perMinute(120)->by($request->user()?->id ?: $request->ip())
@@ -27,6 +32,14 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('exam_mutations', fn (Request $request) =>
             Limit::perMinute(60)->by($request->user()?->id ?: $request->ip())
+        );
+
+        RateLimiter::for('ai_question_generation', fn (Request $request) =>
+            Limit::perMinute(10)->by($request->user()?->id ?: $request->ip())
+        );
+
+        RateLimiter::for('ai_passcode', fn (Request $request) =>
+            Limit::perMinute(5)->by($request->user()?->id ?: $request->ip())
         );
     }
 }
